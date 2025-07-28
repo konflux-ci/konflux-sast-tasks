@@ -9,7 +9,7 @@ metadata:
   name: coverity-availability-check
 spec:
   description: >-
-    This task performs needed checks in order to use Coverity image in the pipeline. It will check for a Coverity license secret and an authentication secret for pulling the image.
+    This awesome task performs needed checks in order to use Coverity image in the pipeline. It will check for a Coverity license secret and an authentication secret for pulling the image.
   results:
     - description: Tekton task result output.
       name: TEST_OUTPUT
