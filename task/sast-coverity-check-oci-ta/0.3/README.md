@@ -55,3 +55,5 @@ Scans source code for security vulnerabilities, including common issues such as 
 |---|---|
 |TEST_OUTPUT|Tekton task test output.|
 
+
+## Additional info
