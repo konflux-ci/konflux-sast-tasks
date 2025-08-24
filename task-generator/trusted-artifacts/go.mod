@@ -38,8 +38,6 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
-	github.com/go-kit/log v0.2.1 // indirect
-	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
@@ -66,7 +64,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/prometheus/statsd_exporter v0.26.1 // indirect
+	github.com/prometheus/statsd_exporter v0.28.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect
