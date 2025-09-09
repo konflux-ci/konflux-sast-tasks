@@ -8,8 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && ( "task/sast-snyk-check/0.4/***".pathChanged() || ".tekton/sast-snyk-check-v04-pull-request.yaml".pathChanged()
-      )
+      == "main" && "/task/sast-snyk-check/0.4/***".pathChanged()
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
