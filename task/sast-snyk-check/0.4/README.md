@@ -18,6 +18,7 @@ Snyk's SAST tool uses a combination of static analysis and machine learning tech
 | IMP_FINDINGS_ONLY  | Report only important findings.  To report all findings, specify "false"                                                                         | true          | true     |
 | KFP_GIT_URL        | Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 | PROJECT_NAME       | Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.                                  | ""            | false    |
+|TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas.|.|false|
 | RECORD_EXCLUDED    | Write excluded records in file. Useful for auditing.                                                                                             | false         | false    |
 |image-digest|Digest of the image to scan.||true|
 |image-url|Image URL.||true|
