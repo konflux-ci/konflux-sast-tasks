@@ -71,7 +71,7 @@
 - op: replace
   path: /spec/steps/0/image
   # New image shoould be based on quay.io/konflux-ci/buildah-task:latest or have all the tooling that the original image has.
-  value: quay.io/redhat-services-prod/sast/coverity:202503.1
+  value: quay.io/redhat-services-prod/sast/coverity:202503.3
 
 - op: replace
   path: /spec/steps/0/imagePullPolicy
@@ -180,7 +180,7 @@
   path: /spec/steps/0
   value:
     name: prepare
-    image: quay.io/redhat-services-prod/sast/coverity:202503.1
+    image: quay.io/redhat-services-prod/sast/coverity:202503.3
     workingDir: $(workspaces.source.path)
     env:
       - name: COV_ANALYZE_ARGS
@@ -194,8 +194,31 @@
     script: |
       #!/bin/bash
 
-      # FIXME: Dockerfile discovery logic is copied from buildah task
       SOURCE_CODE_DIR=source
+
+      echo "[$(date --utc -Ins)] Validate context path"
+
+      if [ -z "$CONTEXT" ]; then
+        echo "WARNING: CONTEXT is empty. Defaulting to '.' (the source directory)." >&2
+        CONTEXT="."
+      fi
+
+      source_dir_path=$(realpath "$SOURCE_CODE_DIR")
+      context_dir_path=$(realpath "$SOURCE_CODE_DIR/$CONTEXT")
+
+      case "$context_dir_path" in
+        "$source_dir_path" | "$source_dir_path/"*)
+          # path is valid, do nothing
+          ;;
+        *)
+          echo "ERROR: The CONTEXT parameter ('$CONTEXT') is invalid because it escapes the source directory." >&2
+          echo "Source path: $source_dir_path" >&2
+          echo "Resolved path: $context_dir_path" >&2
+          exit 1
+          ;;
+      esac
+
+      # FIXME: Dockerfile discovery logic is copied from buildah task
       if [ -e "$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE" ]; then
         dockerfile_path="$(pwd)/$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE"
       elif [ -e "$SOURCE_CODE_DIR/$DOCKERFILE" ]; then
@@ -320,7 +343,7 @@
   path: /spec/steps/2
   value:
     name: postprocess
-    image: quay.io/redhat-services-prod/sast/coverity:202503.1
+    image: quay.io/redhat-services-prod/sast/coverity:202503.3
     computeResources:
       limits:
         memory: 16Gi
@@ -512,13 +535,22 @@
         set -x
         UPLOAD_FILE="$1"
         MEDIA_TYPE="$2"
-        retry oras attach --no-tty --registry-config "${HOME}/auth.json" --artifact-type "${MEDIA_TYPE}" "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"
+        oras attach --no-tty --registry-config "${HOME}/auth.json" --artifact-type "${MEDIA_TYPE}" "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"
       )
 
       echo "Attaching scan results to ${IMAGE_URL}"
-      upload_file "coverity-results.sarif" "application/sarif+json"
+      if ! retry upload_file "coverity-results.sarif" "application/sarif+json"
+      then
+        echo "Failed to attach scan results to ${IMAGE_URL}"
+        exit 1
+      fi
 
       # upload excluded-findings.json if enabled
       if [ -f "excluded-findings.json" ]; then
-        upload_file "excluded-findings.json" "application/json"
+        echo "Attaching excluded findings to ${IMAGE_URL}"
+        if ! retry upload_file "excluded-findings.json" "application/json"
+        then
+          echo "Failed to attach excluded findings to ${IMAGE_URL}"
+          exit 1
+        fi
       fi
