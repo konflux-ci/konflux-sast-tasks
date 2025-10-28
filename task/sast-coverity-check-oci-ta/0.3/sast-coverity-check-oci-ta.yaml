@@ -89,6 +89,17 @@ spec:
       description: Determines if build will be executed without network access.
       type: string
       default: "false"
+    - name: HTTP_PROXY
+      description: HTTP/HTTPS proxy to use for the buildah pull and build
+        operations. Will not be passed through to the container during the
+        build process.
+      type: string
+      default: ""
+    - name: ICM_KEEP_COMPAT_LOCATION
+      description: Whether to keep compatibility location at /root/buildinfo/
+        for ICM injection
+      type: string
+      default: "true"
     - name: IMAGE
       description: The task will build a container image and tag it locally
         as $IMAGE, but will not push the image anywhere. Due to the relationship
@@ -123,6 +134,11 @@ spec:
         image
       type: array
       default: []
+    - name: NO_PROXY
+      description: Comma separated list of hosts or domains which should bypass
+        the HTTP/HTTPS proxy.
+      type: string
+      default: ""
     - name: PREFETCH_INPUT
       description: In case it is not empty, the prefetched content should
         be made available to the build.
@@ -136,6 +152,16 @@ spec:
     - name: PROJECT_NAME
       type: string
       default: ""
+    - name: PROXY_CA_TRUST_CONFIG_MAP_KEY
+      description: The name of the key in the ConfigMap that contains the
+        proxy CA bundle data.
+      type: string
+      default: ca-bundle.crt
+    - name: PROXY_CA_TRUST_CONFIG_MAP_NAME
+      description: The name of the ConfigMap to read proxy CA bundle data
+        from.
+      type: string
+      default: proxy-ca-bundle
     - name: RECORD_EXCLUDED
       type: string
       default: "false"
@@ -239,6 +265,13 @@ spec:
       secret:
         optional: true
         secretName: $(params.ENTITLEMENT_SECRET)
+    - name: proxy-ca-bundle
+      configMap:
+        items:
+          - key: $(params.PROXY_CA_TRUST_CONFIG_MAP_KEY)
+            path: ca-bundle.crt
+        name: $(params.PROXY_CA_TRUST_CONFIG_MAP_NAME)
+        optional: true
     - name: shared
       emptyDir: {}
     - name: trusted-ca
@@ -326,7 +359,7 @@ spec:
           readOnly: true
           subPath: ca-bundle.crt
     - name: prepare
-      image: quay.io/redhat-services-prod/sast/coverity:202503.1
+      image: quay.io/redhat-services-prod/sast/coverity:202503.3
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /etc/secrets/cov
@@ -340,8 +373,31 @@ spec:
       script: |
         #!/bin/bash
 
-        # FIXME: Dockerfile discovery logic is copied from buildah task
         SOURCE_CODE_DIR=source
+
+        echo "[$(date --utc -Ins)] Validate context path"
+
+        if [ -z "$CONTEXT" ]; then
+          echo "WARNING: CONTEXT is empty. Defaulting to '.' (the source directory)." >&2
+          CONTEXT="."
+        fi
+
+        source_dir_path=$(realpath "$SOURCE_CODE_DIR")
+        context_dir_path=$(realpath "$SOURCE_CODE_DIR/$CONTEXT")
+
+        case "$context_dir_path" in
+        "$source_dir_path" | "$source_dir_path/"*)
+          # path is valid, do nothing
+          ;;
+        *)
+          echo "ERROR: The CONTEXT parameter ('$CONTEXT') is invalid because it escapes the source directory." >&2
+          echo "Source path: $source_dir_path" >&2
+          echo "Resolved path: $context_dir_path" >&2
+          exit 1
+          ;;
+        esac
+
+        # FIXME: Dockerfile discovery logic is copied from buildah task
         if [ -e "$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE" ]; then
           dockerfile_path="$(pwd)/$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE"
         elif [ -e "$SOURCE_CODE_DIR/$DOCKERFILE" ]; then
@@ -450,7 +506,7 @@ spec:
           exit $EC
         fi
     - name: build
-      image: quay.io/redhat-services-prod/sast/coverity:202503.1
+      image: quay.io/redhat-services-prod/sast/coverity:202503.3
       imagePullPolicy: Always
       args:
         - --build-args
@@ -472,11 +528,20 @@ spec:
         - mountPath: /mnt/trusted-ca
           name: trusted-ca
           readOnly: true
+        - mountPath: /mnt/proxy-ca-bundle
+          name: proxy-ca-bundle
+          readOnly: true
       env:
         - name: COMMIT_SHA
           value: $(params.COMMIT_SHA)
         - name: DOCKERFILE
           value: /shared/Containerfile
+        - name: BUILDAH_HTTP_PROXY
+          value: $(params.HTTP_PROXY)
+        - name: BUILDAH_NO_PROXY
+          value: $(params.NO_PROXY)
+        - name: ICM_KEEP_COMPAT_LOCATION
+          value: $(params.ICM_KEEP_COMPAT_LOCATION)
         - name: ADDITIONAL_VOLUME_MOUNTS
           value: |-
             /opt/coverity:/opt/coverity
@@ -488,12 +553,65 @@ spec:
         #!/bin/bash
         set -euo pipefail
 
+        function set_proxy {
+          if [ -n "${BUILDAH_HTTP_PROXY}" ]; then
+            echo "[$(date --utc -Ins)] Setting proxy to ${BUILDAH_HTTP_PROXY}"
+            export HTTP_PROXY="${BUILDAH_HTTP_PROXY}"
+            export HTTPS_PROXY="${BUILDAH_HTTP_PROXY}"
+            export ALL_PROXY="${BUILDAH_HTTP_PROXY}"
+            if [ -n "${BUILDAH_NO_PROXY}" ]; then
+              echo "[$(date --utc -Ins)] Bypassing proxy for ${BUILDAH_NO_PROXY}"
+              export NO_PROXY="${BUILDAH_NO_PROXY}"
+            fi
+          fi
+        }
+
+        function unset_proxy {
+          echo "[$(date --utc -Ins)] Unsetting proxy"
+          unset HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
+        }
+
+        echo "[$(date --utc -Ins)] Validate context path"
+
+        if [ -z "$CONTEXT" ]; then
+          echo "WARNING: CONTEXT is empty. Defaulting to '.' (the source directory)." >&2
+          CONTEXT="."
+        fi
+
+        source_dir_path=$(realpath "$SOURCE_CODE_DIR")
+        context_dir_path=$(realpath "$SOURCE_CODE_DIR/$CONTEXT")
+
+        case "$context_dir_path" in
+        "$source_dir_path" | "$source_dir_path/"*)
+          # path is valid, do nothing
+          ;;
+        *)
+          echo "ERROR: The CONTEXT parameter ('$CONTEXT') is invalid because it escapes the source directory." >&2
+          echo "Source path: $source_dir_path" >&2
+          echo "Resolved path: $context_dir_path" >&2
+          exit 1
+          ;;
+        esac
+
         echo "[$(date --utc -Ins)] Update CA trust"
 
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
+        proxy_ca_bundle=/mnt/proxy-ca-bundle/ca-bundle.crt
+        update_ca_trust=false
+
         if [ -f "$ca_bundle" ]; then
-          echo "INFO: Using mounted CA bundle: $ca_bundle"
-          cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
+          echo "[$(date --utc -Ins)] Using mounted CA bundle: $ca_bundle"
+          cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors/ca-bundle.crt
+          update_ca_trust=true
+        fi
+
+        if [ -f "$proxy_ca_bundle" ] && [ -n "${BUILDAH_HTTP_PROXY}" ]; then
+          echo "[$(date --utc -Ins)] Using mounted proxy CA bundle: $proxy_ca_bundle"
+          cp -vf $proxy_ca_bundle /etc/pki/ca-trust/source/anchors/proxy-ca-bundle.crt
+          update_ca_trust=true
+        fi
+
+        if [ "$update_ca_trust" = "true" ]; then
           update-ca-trust
         fi
 
@@ -530,7 +648,11 @@ spec:
         # Inject the image content manifest into the container we are producing.
         # This will generate the content-sets.json file and copy it by appending a COPY
         # instruction to the Containerfile.
-        inject-icm-to-containerfile "$dockerfile_copy" "/var/workdir/cachi2/output/bom.json" "$SOURCE_CODE_DIR/$CONTEXT"
+        icm_opts=()
+        if [ "${ICM_KEEP_COMPAT_LOCATION}" = "true" ]; then
+          icm_opts+=(-c)
+        fi
+        inject-icm-to-containerfile "${icm_opts[@]}" "$dockerfile_copy" "/var/workdir/cachi2/output/bom.json" "$SOURCE_CODE_DIR/$CONTEXT"
 
         echo "[$(date --utc -Ins)] Prepare system (architecture: $(uname -m))"
 
@@ -606,7 +728,28 @@ spec:
           BUILD_ARG_FLAGS+=("--build-arg=$build_arg")
         done
 
-        dockerfile-json "${BUILD_ARG_FLAGS[@]}" "$dockerfile_copy" >/shared/parsed_dockerfile.json
+        # Dockerfile-json cannot parse Buildah's host variables, we have to pass them manually
+        BUILDAH_INFO=$(buildah info)
+        BUILDAH_OS=$(jq -r '.host.os' <<<"$BUILDAH_INFO")
+        BUILDAH_ARCH=$(jq -r '.host.arch' <<<"$BUILDAH_INFO")
+        BUILDAH_VARIANT=$(jq -r '.host.variant' <<<"$BUILDAH_INFO")
+        BUILDAH_PLATFORM="${BUILDAH_OS}/${BUILDAH_ARCH}"
+
+        DOCKERFILE_ARG_FLAGS=()
+
+        # Reference for variables:
+        # https://docs.docker.com/build/building/variables/#pre-defined-build-arguments
+        PREFIXES=('BUILD' 'TARGET')
+        for PREFIX in "${PREFIXES[@]}"; do
+          DOCKERFILE_ARG_FLAGS+=("--build-arg=${PREFIX}PLATFORM=${BUILDAH_PLATFORM}")
+          DOCKERFILE_ARG_FLAGS+=("--build-arg=${PREFIX}OS=${BUILDAH_OS}")
+          DOCKERFILE_ARG_FLAGS+=("--build-arg=${PREFIX}ARCH=${BUILDAH_ARCH}")
+          DOCKERFILE_ARG_FLAGS+=("--build-arg=${PREFIX}VARIANT=${BUILDAH_VARIANT}")
+        done
+
+        DOCKERFILE_ARG_FLAGS+=("${BUILD_ARG_FLAGS[@]}")
+
+        dockerfile-json "${DOCKERFILE_ARG_FLAGS[@]}" "$dockerfile_copy" >/shared/parsed_dockerfile.json
         BASE_IMAGES=$(
           jq -r '.Stages[] | select(.From | .Stage or .Scratch | not) | .BaseName | select(test("^oci-archive:") | not)' /shared/parsed_dockerfile.json |
             tr -d '"' |
@@ -621,12 +764,17 @@ spec:
           UNSHARE_ARGS+=("--net")
           buildah_retries=3
 
+          set_proxy
+
           for image in $BASE_IMAGES; do
             if ! retry unshare -Ufp --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 --mount -- buildah pull --retry "$buildah_retries" "$image"; then
               echo "Failed to pull base image ${image}"
               exit 1
             fi
           done
+
+          unset_proxy
+
           echo "Build will be executed with network isolation"
         fi
 
@@ -738,7 +886,12 @@ spec:
           if ! grep -E "^[^#]*subscription-manager.[^#]*register" "$dockerfile_path"; then
             # user is not running registration in the Containerfile: pre-register.
             echo "Pre-registering with subscription manager."
-            subscription-manager register --org "$(cat /tmp/activation-key/org)" --activationkey "$(cat /tmp/activation-key/activationkey)"
+            export RETRY_MAX_TRIES=6
+            if ! retry subscription-manager register --org "$(cat /tmp/activation-key/org)" --activationkey "$(cat /tmp/activation-key/activationkey)"; then
+              echo "Subscription-manager register failed"
+              exit 1
+            fi
+            unset RETRY_MAX_TRIES
             trap 'subscription-manager unregister || true' EXIT
 
             # copy generated certificates to /shared volume
@@ -798,6 +951,7 @@ spec:
           "${ANNOTATIONS[@]}"
           --tls-verify="$TLSVERIFY" --no-cache
           --ulimit nofile=4096:4096
+          --http-proxy=false
           -f "$dockerfile_copy" -t "$IMAGE" .
         )
         buildah_cmd=$(printf "%q " "${buildah_cmd_array[@]}")
@@ -812,10 +966,14 @@ spec:
         # disable host subcription manager integration
         find /usr/share/rhel/secrets -type l -exec unlink {} \;
 
+        set_proxy
+
         echo "[$(date --utc -Ins)] Run buildah build"
         echo "[$(date --utc -Ins)] ${command}"
 
         unshare -Uf "${UNSHARE_ARGS[@]}" --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w "${SOURCE_CODE_DIR}/$CONTEXT" --mount -- sh -c "$command"
+
+        unset_proxy
 
         echo "[$(date --utc -Ins)] Add metadata"
 
@@ -828,7 +986,8 @@ spec:
         touch /shared/base_images_digests
         echo "Recording base image digests used"
         for image in $BASE_IMAGES; do
-          base_image_digest=$(buildah images --format '{{ .Name }}:{{ .Tag }}@{{ .Digest }}' --filter reference="$image")
+          # Get the image pullspec and filter out a tag if it is not set
+          base_image_digest=$(buildah images --format '{{ .Name }}{{ if ne .Tag "<none>" }}:{{ .Tag }}{{ end }}@{{ .Digest }}' --filter reference="$image")
           # In some cases, there might be BASE_IMAGES, but not any associated digest. This happens
           # if buildah did not use that particular image during build because it was skipped
           if [ -n "$base_image_digest" ]; then
@@ -852,7 +1011,7 @@ spec:
           add:
             - SETFCAP
     - name: postprocess
-      image: quay.io/redhat-services-prod/sast/coverity:202503.1
+      image: quay.io/redhat-services-prod/sast/coverity:202503.3
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /mnt/trusted-ca
