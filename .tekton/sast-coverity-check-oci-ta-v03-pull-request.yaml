@@ -31,7 +31,8 @@ spec:
   - name: dockerfile
     value: Dockerfile
   - name: path-context
-    value: task/sast-coverity-check-oci-ta/0.3
+    # exclude recipe.yaml file
+    value: task/sast-coverity-check-oci-ta/0.3,!task/sast-coverity-check-oci-ta/0.3/recipe.yaml
   pipelineSpec:
     finally:
     - name: show-summary
@@ -208,7 +209,7 @@ spec:
         - name: name
           value: tkn-bundle-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-tkn-bundle-oci-ta:0.2@sha256:43e20b7e039152dc08acf00fa60c15f36be238fd5c5e0830ef6e53c339c13b78
+          value: quay.io/konflux-ci/tekton-catalog/task-tkn-bundle-oci-ta:0.2@sha256:9713f360e1cb7aa37fc98b633affcaf002ddfee5362b75123447d148cf0f8960
         - name: kind
           value: task
         resolver: bundles
