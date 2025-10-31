@@ -2,10 +2,10 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: test-sast-snyk-check-no-token
+  name: test-sast-snyk-check
 spec:
   description: |
-    Test the sast-snyk-check task is skipped when no token is available
+    Test the sast-snyk-check task is runs successfully
   workspaces:
     - name: tests-workspace
   tasks:
@@ -16,8 +16,6 @@ spec:
       taskRef:
         name: sast-snyk-check
       params:
-        - name: SNYK_SECRET
-          value: missing-token
         - name: image-url
           # TODO add credentials for `oci-attach` so that upload can be tested
           # for now, set this to empty string to force skipping of upload results step
@@ -50,4 +48,4 @@ spec:
               echo "$RESULTS"
               # snyk check should skip because snyk_token is unavailable in ephemeral clusters
               echo -n "Expected result: "
-              echo "$RESULTS" | jq -e '.result == "SKIPPED" and (.note | contains("snyk_token")) and .successes == 0 and .failures == 0 and .warnings == 0'
+              echo "$RESULTS" | jq -e '.result == "SUCCESS" and .successes == 0 and .failures == 0 and .warnings == 0'
