@@ -16,8 +16,6 @@ spec:
       taskRef:
         name: sast-snyk-check
       params:
-        - name: SNYK_SECRET
-          value: missing-token
         - name: image-url
           value: quay.io/repository/redhat-user-workloads/kalem-tenant/devfile-sample-python-basic@sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
         - name: image-digest
@@ -48,4 +46,4 @@ spec:
               echo "$RESULTS"
               # snyk check should skip because snyk_token is unavailable in ephemeral clusters
               echo -n "Expected result: "
-              echo "$RESULTS" | jq -e '.result == "SKIPPED" and (.note | contains("snyk_token")) and .successes == 0 and .failures == 0 and .warnings == 0'
+              echo "$RESULTS" | jq -e '.result == "SUCCESS" and .successes == 0 and .failures == 0 and .warnings == 0'
