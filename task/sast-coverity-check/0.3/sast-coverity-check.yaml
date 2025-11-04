@@ -295,7 +295,7 @@ spec:
       value: $(params.COV_ANALYZE_ARGS)
     - name: DOCKERFILE
       value: $(params.DOCKERFILE)
-    image: quay.io/redhat-services-prod/sast/coverity:202503.3
+    image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
     name: prepare
     script: |
       #!/bin/bash
@@ -966,7 +966,7 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
-    image: quay.io/redhat-services-prod/sast/coverity:202503.3
+    image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
     name: postprocess
     script: |
       #!/bin/bash -e
