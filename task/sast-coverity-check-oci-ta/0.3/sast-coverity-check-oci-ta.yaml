@@ -359,7 +359,7 @@ spec:
           readOnly: true
           subPath: ca-bundle.crt
     - name: prepare
-      image: quay.io/redhat-services-prod/sast/coverity:202503.3
+      image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /etc/secrets/cov
@@ -1011,7 +1011,7 @@ spec:
           add:
             - SETFCAP
     - name: postprocess
-      image: quay.io/redhat-services-prod/sast/coverity:202503.3
+      image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /mnt/trusted-ca

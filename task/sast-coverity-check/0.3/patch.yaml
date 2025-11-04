@@ -180,7 +180,7 @@
   path: /spec/steps/0
   value:
     name: prepare
-    image: quay.io/redhat-services-prod/sast/coverity:202503.3
+    image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
     workingDir: $(workspaces.source.path)
     env:
       - name: COV_ANALYZE_ARGS
@@ -343,7 +343,7 @@
   path: /spec/steps/2
   value:
     name: postprocess
-    image: quay.io/redhat-services-prod/sast/coverity:202503.3
+    image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
     computeResources:
       limits:
         memory: 16Gi
