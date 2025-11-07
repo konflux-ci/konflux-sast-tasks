@@ -1,0 +1,90 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: prep-rpm-source
+  annotations:
+    tekton.dev/pipelines.minVersion: 0.12.1
+    tekton.dev/tags: konflux
+  labels:
+    app.kubernetes.io/version: "0.1"
+spec:
+  description: |-
+    Prepare RPM source for SAST scanning.
+  params:
+    - name: RPM_SOURCE_ARTIFACT
+      description: |-
+        The URI pointing to the RPM source code artifact produced earlier in the
+        build pipeline (tag usually ends in ".rpm-sources").
+      type: string
+    - name: OUTPUT_ARTIFACT
+      description: |-
+        The URI where the prepared RPM source code is pushed to.
+      type: string
+    - name: caTrustConfigMapKey
+      description: The name of the key in the ConfigMap that contains the
+        CA bundle data.
+      type: string
+      default: ca-bundle.crt
+    - name: caTrustConfigMapName
+      description: The name of the ConfigMap to read CA bundle data from.
+      type: string
+      default: trusted-ca
+  results:
+    - name: PREPARED_SOURCE_ARTIFACT
+      description: Trusted artifact with prepared RPM source code.
+  volumes:
+    - name: trusted-ca
+      configMap:
+        items:
+          - key: $(params.caTrustConfigMapKey)
+            path: ca-bundle.crt
+        name: $(params.caTrustConfigMapName)
+        optional: true
+    - name: workdir
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - mountPath: /var/workdir
+        name: workdir
+  steps:
+    - name: use-trusted-artifact
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
+      args:
+        - use
+        - oci:$(params.RPM_SOURCE_ARTIFACT)=/var/workdir/source
+      volumeMounts:
+        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+          name: trusted-ca
+          readOnly: true
+          subPath: ca-bundle.crt
+    - name: prep-rpm-source
+      # upstream image, downstream environment image contains extras like brewkoji config
+      image: quay.io/redhat-user-workloads/rpm-build-pipeline-tenant/environment:latest@sha256:058cb121f7862980b833faf51fd928674851c66fc88a3e37fd322d8081a29c53
+      workingDir: /var/workdir/source
+      script: |
+        #!/usr/bin/env bash
+
+        set -euo pipefail
+        set -x
+
+        # prepare RPM source, extract archives and apply patches
+        rpmbuild --bp --nodeps ./*.spec --define '_topdir /var/workdir/build' --define "_sourcedir $(pwd)"
+        exit_code=$?
+        if [ $exit_code -eq 0 ]; then
+          # if successful BUILD directory will contain ready source
+          builddir=$(find /var/workdir/build/BUILD -maxdepth 1 -mindepth 1 -type d)
+          echo "INFO: source prepared in $builddir"
+          # echo "$builddir" > $(results.PREPARED_SOURCE_ARTIFACT.path)
+        else
+          echo "ERROR: source prep with 'rpmbuild -bp --nodeps' failed"
+          # TODO: fallback, simple extraction of archives, maybe use /usr/lib/rpm/rpmuncompress
+          exit 1
+        fi
+    - name: create-trusted-artifact
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      args:
+        - create
+        - --store
+        - $(params.OUTPUT_ARTIFACT)
+        - $(results.PREPARED_SOURCE_ARTIFACT.path)=/var/workdir/build/BUILD
