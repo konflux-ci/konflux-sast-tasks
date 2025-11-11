@@ -70,7 +70,7 @@ spec:
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
       args:
         - use
-        - oci:$(params.DEPENDENCIES_ARTIFACT)=/var/workdir/source
+        - oci:$(results.DEPENDENCIES_ARTIFACT.path)=/var/workdir/source
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca
