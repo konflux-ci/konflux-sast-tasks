@@ -81,8 +81,12 @@ spec:
           readOnly: true
           subPath: ca-bundle.crt
     - name: prep-rpm-source
-      # upstream image, downstream environment image contains extras like brewkoji config
-      image: quay.io/redhat-user-workloads/rpm-build-pipeline-tenant/environment:latest@sha256:058cb121f7862980b833faf51fd928674851c66fc88a3e37fd322d8081a29c53
+      # this is a custom image based on the upstream image:
+      # https://github.com/konflux-ci/rpmbuild-pipeline-environment-container/tree/main
+      # downstream environment image contains extras like brewkoji config
+      # TODO - add rpmbuild to environment image?
+      image: quay.io/sfowler/rpmbuild-environment:latest
+      imagePullPolicy: Always
       workingDir: /var/workdir/source
       script: |
         #!/usr/bin/env bash
