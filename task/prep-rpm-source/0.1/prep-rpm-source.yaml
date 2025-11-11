@@ -33,8 +33,6 @@ spec:
   results:
     - name: PREPARED_SOURCE_ARTIFACT
       description: Trusted artifact with prepared RPM source code.
-    - name: DEPENDENCIES_ARTIFACT
-      description: repo:digest of "dependencies-artifact" from params.RPM_SOURCE_ARTIFACT
   volumes:
     - name: trusted-ca
       configMap:
@@ -52,6 +50,9 @@ spec:
   steps:
     - name: select-artifact
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
+      results:
+        - name: DEPENDENCIES_ARTIFACT
+          description: repo:digest of "dependencies-artifact" from params.RPM_SOURCE_ARTIFACT
       script: |
         #!/usr/bin/env bash
 
@@ -64,13 +65,16 @@ spec:
         REPO_TMP="$(params.RPM_SOURCE_ARTIFACT)"
         REPO="${REPO_TMP%:*}"
 
-        echo "${REPO}:${DIGEST}" > "$(results.DEPENDENCIES_ARTIFACT.path)"
+        echo -n "${REPO}@${DIGEST}" > "$(step.results.DEPENDENCIES_ARTIFACT.path)"
 
     - name: use-trusted-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
       args:
         - use
-        - oci:$(results.DEPENDENCIES_ARTIFACT.path)=/var/workdir/source
+        - oci:$(steps.select-artifact.results.DEPENDENCIES_ARTIFACT)=/var/workdir/source
+      env:
+        - name: DEBUG
+          value: "1"
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca
