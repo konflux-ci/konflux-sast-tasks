@@ -1,0 +1,17 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-prep-rpm-source
+spec:
+  description: |
+    Test the prep-rpm-source task
+  tasks:
+    - name: prep-rpm-source
+      taskRef:
+        name: prep-rpm-source
+      params:
+      - name: RPM_SOURCE_ARTIFACT
+        value: quay.io/sfowler/rpmbuild-pipeline:on-pr-36eb8ce1c258b97a2f07c3b2701bff30301b0ba1.rpm-sources
+      - name: OUTPUT_ARTIFACT
+        value: quay.io/sfowler/rpmbuild-pipeline:on-pr-36eb8ce1c258b97a2f07c3b2701bff30301b0ba1.prepared-source
