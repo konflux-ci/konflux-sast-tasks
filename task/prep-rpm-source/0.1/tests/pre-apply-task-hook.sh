@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Validate required environment variables
+if [[ -z "${TEST_PREP_RPM_PUSH_DOCKERCONFIG:-}" ]]; then
+    echo "ERROR: TEST_PREP_RPM_PUSH_DOCKERCONFIG environment variable is not set"
+    exit 1
+fi
+
 # these should exist as github actions secrets
 # PUSH_PASSWORD="${TEST_PREP_RPM_PUSH_PASSWORD}"
 # PUSH_USERNAME="${TEST_PREP_RPM_PUSH_USERNAME}"
