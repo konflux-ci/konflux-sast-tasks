@@ -10,4 +10,4 @@ echo "Creating image push secret $PUSH_SECRET_NAME in namespace: $2"
 oc get sa
 
 kubectl -n "$2" create secret docker-registry "$PUSH_SECRET_NAME" --docker-username "$PUSH_USERNAME" --docker-password "$PUSH_PASSWORD"
-kubectl -n "$2" patch serviceaccount "$SERVICE_ACCOUNT_NAME" -p '{"imagePullSecrets": [{"name": "'"$MY_SECRET_NAME"'"}]}'
+kubectl -n "$2" patch serviceaccount "$SERVICE_ACCOUNT_NAME" -p '{"imagePullSecrets": [{"name": "'"$PUSH_SECRET_NAME"'"}]}'
