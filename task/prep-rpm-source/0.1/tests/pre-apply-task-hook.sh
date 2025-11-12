@@ -10,7 +10,7 @@ echo "Creating image push secret $PUSH_SECRET_NAME in namespace: $2"
 
 kubectl get sa
 
-kubect -n "$2" create serviceaccount "$SERVICE_ACCOUNT_NAME" || true
+kubectl -n "$2" create serviceaccount "$SERVICE_ACCOUNT_NAME" || true
 
 echo -n "$PUSH_SECRET" | base64 -d > /tmp/dockerconfig.json
 kubectl -n "$2" create secret docker-registry "$PUSH_SECRET_NAME" --from-file=/tmp/dockerconfig.json
