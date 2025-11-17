@@ -12,15 +12,8 @@ spec:
   description: |-
     Prepare RPM source for SAST scanning.
   params:
-    - name: RPM_SOURCE_ARTIFACT
-      description: |-
-        The URI pointing to the RPM source code artifact produced earlier in the
-        build pipeline (tag usually ends in ".rpm-sources").
-      type: string
-    - name: OUTPUT_ARTIFACT
-      description: |-
-        The URI where the prepared RPM source code is pushed to.
-      type: string
+    - name: SNAPSHOT
+      description: The JSON string of the Snapshot produced by the build pipeline
     - name: caTrustConfigMapKey
       description: The name of the key in the ConfigMap that contains the
         CA bundle data.
@@ -33,45 +26,58 @@ spec:
   results:
     - name: PREPARED_SOURCE_ARTIFACT
       description: Trusted artifact with prepared RPM source code.
-  volumes:
-    - name: trusted-ca
-      configMap:
-        items:
-          - key: $(params.caTrustConfigMapKey)
-            path: ca-bundle.crt
-        name: $(params.caTrustConfigMapName)
-        optional: true
-    - name: workdir
-      emptyDir: {}
   stepTemplate:
     volumeMounts:
       - mountPath: /var/workdir
         name: workdir
   steps:
-    - name: select-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
+    # based on https://github.com/konflux-ci/integration-examples/blob/main/tasks/test_metadata.yaml
+    - name: parse-snapshot
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      env:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: COMPONENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['appstudio.openshift.io/component']
       results:
+        - name: OCI_STORAGE
+          description: |
+            OCI registry URL where the pipeline stores trusted artifacts, including
+            both resulting artifacts and intermediary by-products.
         - name: DEPENDENCIES_ARTIFACT
-          description: repo:digest of "dependencies-artifact" from params.RPM_SOURCE_ARTIFACT
+          description: repo:digest of rpm-sources'  "dependencies-artifact" produced in the build
       script: |
         #!/usr/bin/env bash
 
         set -euo pipefail
         set -x
 
-        MANIFEST=$(oras manifest get "$(params.RPM_SOURCE_ARTIFACT)")
+        SOURCE_GIT_REVISION=$(jq -r --arg component_name "${COMPONENT_NAME}" '.components[] | select(.name == $component_name) | .source.git.revision' <<< "${SNAPSHOT}")
+        COMPONENT_CONTAINER_IMAGE=$(jq -r --arg component_name "${COMPONENT_NAME}" '.components[] | select(.name == $component_name) | .containerImage' <<< "${SNAPSHOT}")
+
+        # Use tag convention of <repo>:<commit>.rpm-sources
+        # to identify source code artifact. This makes many assumptions, it may
+        # be better to find another approach e.g. extract from slsa attestation
+        REPO="${COMPONENT_CONTAINER_IMAGE%@*}"
+        OCI_STORAGE="${REPO}:${SOURCE_GIT_REVISION}"
+        RPM_SOURCES_IMAGE="${OCI_STORAGE}.rpm-sources"
+        MANIFEST=$(oras manifest get "${RPM_SOURCES_IMAGE}")
         DIGEST=$(echo -n "$MANIFEST" | jq -r \
                   '.layers[] | select( .annotations["org.opencontainers.image.title"] == "dependencies-artifact") | .digest')
-        REPO_TMP="$(params.RPM_SOURCE_ARTIFACT)"
-        REPO="${REPO_TMP%:*}"
 
+        # example results:
+        # <repo>:<commit>
+        # <repo>@<digest> of "dependencies-artifact" blob in <repo>:<commit>.rpm-sources image
+        echo -n "${OCI_STORAGE}" > "$(step.results.OCI_STORAGE.path)"
         echo -n "${REPO}@${DIGEST}" > "$(step.results.DEPENDENCIES_ARTIFACT.path)"
 
     - name: use-trusted-artifact
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
       args:
         - use
-        - oci:$(steps.select-artifact.results.DEPENDENCIES_ARTIFACT)=/var/workdir/source
+        - oci:$(steps.parse-snapshot.results.DEPENDENCIES_ARTIFACT)=/var/workdir/source
       env:
         - name: DEBUG
           value: "1"
@@ -112,5 +118,15 @@ spec:
       args:
         - create
         - --store
-        - $(params.OUTPUT_ARTIFACT)
+        - $(step.results.IMAGE_REPO.path)
         - $(results.PREPARED_SOURCE_ARTIFACT.path)=/var/workdir/build/BUILD
+  volumes:
+    - name: trusted-ca
+      configMap:
+        items:
+          - key: $(params.caTrustConfigMapKey)
+            path: ca-bundle.crt
+        name: $(params.caTrustConfigMapName)
+        optional: true
+    - name: workdir
+      emptyDir: {}

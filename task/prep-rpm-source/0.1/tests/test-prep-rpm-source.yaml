@@ -3,6 +3,8 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: test-prep-rpm-source
+  labels:
+    appstudio.openshift.io/component: libecpg
 spec:
   description: |
     Test the prep-rpm-source task
@@ -11,7 +13,41 @@ spec:
       taskRef:
         name: prep-rpm-source
       params:
-      - name: RPM_SOURCE_ARTIFACT
-        value: quay.io/sfowler/rpmbuild-pipeline:on-pr-36eb8ce1c258b97a2f07c3b2701bff30301b0ba1.rpm-sources
-      - name: OUTPUT_ARTIFACT
-        value: quay.io/sfowler/rpmbuild-pipeline:on-pr-36eb8ce1c258b97a2f07c3b2701bff30301b0ba1.prepared-source
+      - name: SNAPSHOT
+        value: |-
+          {
+            "components": [
+              {
+                "name":"libecpg",
+                "containerImage": "quay.io/sfowler/rpmbuild-pipeline@sha256:88bbd17386301a05c7603c3657a514ee4b5c87d71f5a658279f63027014f50a0",
+                "source":{
+                  "git":{
+                    "url":"git@some-gitlab-instance.com:sfowler/libecpg.git",
+                    "revision":"65165a6164e155caa772cf9930031466dbff7721"
+                  }
+                }
+              }
+            ]
+          }
+    - name: check-result
+      runAfter:
+        - prep-rpm-source
+      params:
+        - name: result-artifact
+          value: $(tasks.prep-rpm-source.results.PREPARED_SOURCE_ARTIFACT)
+      taskSpec:
+        params:
+          - name: result-artifact
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.4.28@sha256:4a5423e125fc28db800421422d9933290dc4b62a22401d74cd3348c03107a5d9
+            env:
+            - name: RESULT
+              value: $(params.result-artifact)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              echo "$RESULT"
+              [[ -n "$RESULT" ]] || echo "RESULT is empty" && exit 1
