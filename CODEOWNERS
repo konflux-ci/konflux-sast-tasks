@@ -8,3 +8,4 @@
 /task/sast-snyk-check-oci-ta                @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-unicode-check                    @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-unicode-check-oci-ta             @konflux-ci/integration-service-maintainers @sfowl
+/task/prep-rpm-source                       @konflux-ci/integration-service-maintainers @sfowl
