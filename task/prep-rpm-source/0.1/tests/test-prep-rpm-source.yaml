@@ -40,7 +40,7 @@ spec:
           - name: result-artifact
         steps:
           - name: check-result
-            image: quay.io/konflux-ci/konflux-test:v1.4.28@sha256:4a5423e125fc28db800421422d9933290dc4b62a22401d74cd3348c03107a5d9
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
             env:
             - name: RESULT
               value: $(params.result-artifact)
@@ -48,6 +48,10 @@ spec:
               #!/bin/bash
 
               set -e
+              set -x
 
               echo "$RESULT"
-              [[ -n "$RESULT" ]] || echo "RESULT is empty" && exit 1
+              [[ -n "$RESULT" ]] || (echo "RESULT is empty" && exit 1)
+
+              # trim oci: prefix
+              oras blob fetch --descriptor "${RESULT#oci:}"

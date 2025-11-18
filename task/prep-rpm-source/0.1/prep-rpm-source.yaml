@@ -46,48 +46,75 @@ spec:
           description: |
             OCI registry URL where the pipeline stores trusted artifacts, including
             both resulting artifacts and intermediary by-products.
-        - name: DEPENDENCIES_ARTIFACT
-          description: repo:digest of rpm-sources'  "dependencies-artifact" produced in the build
+        - name: SRPM_BLOB_ARTIFACT
+          description: repo:digest of SRPM produce during build pipeline
+        - name: SRPM_NAME
+          description: Filename of the source RPM artifact
       script: |
         #!/usr/bin/env bash
 
         set -euo pipefail
         set -x
 
+        # DEBUG
         echo "${SNAPSHOT}"
 
-        SOURCE_GIT_REVISION=$(jq -r --arg component_name "${COMPONENT_NAME}" '.components[] | select(.name == $component_name) | .source.git.revision' <<< "${SNAPSHOT}")
         COMPONENT_CONTAINER_IMAGE=$(jq -r --arg component_name "${COMPONENT_NAME}" '.components[] | select(.name == $component_name) | .containerImage' <<< "${SNAPSHOT}")
-
-        # Use tag convention of <repo>:<commit>.rpm-sources
-        # to identify source code artifact. This makes many assumptions, it may
-        # be better to find another approach e.g. extract from slsa attestation
+        # remote registry without tag/digest
         REPO="${COMPONENT_CONTAINER_IMAGE%@*}"
-        OCI_STORAGE="${REPO}:${SOURCE_GIT_REVISION}"
-        RPM_SOURCES_IMAGE="${OCI_STORAGE}.rpm-sources"
-        MANIFEST=$(oras manifest get "${RPM_SOURCES_IMAGE}")
-        DIGEST=$(echo -n "$MANIFEST" | jq -r \
-                  '.layers[] | select( .annotations["org.opencontainers.image.title"] == "dependencies-artifact") | .digest')
 
-        # example results:
-        # <repo>:<commit>
-        # <repo>@<digest> of "dependencies-artifact" blob in <repo>:<commit>.rpm-sources image
-        echo -n "${OCI_STORAGE}" > "$(step.results.OCI_STORAGE.path)"
-        echo -n "${REPO}@${DIGEST}" > "$(step.results.DEPENDENCIES_ARTIFACT.path)"
+        MANIFEST=$(oras manifest get "${COMPONENT_CONTAINER_IMAGE}")
+        BLOB_JSON=$(echo -n "$MANIFEST" | jq -r '.layers[] | select( .annotations["org.opencontainers.image.title"] | endswith(".src.rpm"))')
+        TITLE=$(echo -n "$BLOB_JSON" | jq -r '.annotations["org.opencontainers.image.title"]')
+        DIGEST=$(echo -n "$BLOB_JSON" | jq -r '.digest')
 
-    - name: use-trusted-artifact
+        # use repo only (no tag/digest for OCI_STORAGE param, because we don't need a new tag
+        echo -n "${REPO}" > "$(step.results.OCI_STORAGE.path)"
+        echo -n "${REPO}@${DIGEST}" > "$(step.results.SRPM_BLOB_ARTIFACT.path)"
+        echo -n "${TITLE}" > "$(step.results.SRPM_NAME.path)"
+
+    # XXX use-trusted-artifact only supports extraction to a directory, if the artifact
+    # is something like an SRPM, extraction will fail. So for now we use a custom retrieval
+    # method with oras
+    #
+    # - name: use-trusted-artifact
+    #   image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+    #   args:
+    #     - use
+    #     - oci:$(steps.parse-snapshot.results.SRPM_BLOB_ARTIFACT)=/var/workdir/source
+    #   env:
+    #     - name: DEBUG
+    #       value: "1"
+    #   volumeMounts:
+    #     - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+    #       name: trusted-ca
+    #       readOnly: true
+    #       subPath: ca-bundle.crt
+
+    - name: get-srpm
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
-      args:
-        - use
-        - oci:$(steps.parse-snapshot.results.DEPENDENCIES_ARTIFACT)=/var/workdir/source
+      workingDir: /var/workdir/source
       env:
-        - name: DEBUG
-          value: "1"
-      volumeMounts:
-        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
-          name: trusted-ca
-          readOnly: true
-          subPath: ca-bundle.crt
+        - name: BLOB_URL
+          value: $(steps.parse-snapshot.results.SRPM_BLOB_ARTIFACT)
+        - name: SRPM_NAME
+          value: $(steps.parse-snapshot.results.SRPM_NAME)
+      script: |
+        #!/bin/bash
+
+        set -e
+        set -x
+
+        echo "Selecting auth for $BLOB_URL"
+
+        TMP_WORKDIR=$(mktemp -d --tmpdir get-srpm.XXXXXX)
+        trap 'rm -rf $TMP_WORKDIR' EXIT
+
+        AUTHFILE=$(mktemp --tmpdir="$TMP_WORKDIR" "auth-XXXXXX.json")
+        select-oci-auth.sh "${BLOB_URL}" > "${AUTHFILE}"
+
+        oras blob get --registry-config "${AUTHFILE}" "${BLOB_URL}" --output "${SRPM_NAME}"
+
     - name: prep-rpm-source
       # this is a custom image based on the upstream image:
       # https://github.com/konflux-ci/rpmbuild-pipeline-environment-container/tree/main
@@ -96,22 +123,25 @@ spec:
       image: quay.io/sfowler/rpmbuild-environment:latest
       imagePullPolicy: Always
       workingDir: /var/workdir/source
+      env:
+        - name: SRPM_NAME
+          value: $(steps.parse-snapshot.results.SRPM_NAME)
       script: |
-        #!/usr/bin/env bash
+        #!/bin/bash
 
         set -euo pipefail
         set -x
 
         # prepare RPM source, extract archives and apply patches
-        rpmbuild --bp --nodeps ./*.spec --define '_topdir /var/workdir/build' --define "_sourcedir $(pwd)"
+        rpmbuild --rp --nodeps "${SRPM_NAME}" --define '_topdir /var/workdir/build' --define "_sourcedir $(pwd)"
         exit_code=$?
-        if [ $exit_code -eq 0 ]; then
+        if [ ! $exit_code -eq 0 ]; then
           # if successful BUILD directory will contain ready source
-          builddir=$(find /var/workdir/build/BUILD -maxdepth 1 -mindepth 1 -type d)
-          echo "INFO: source prepared in $builddir"
+          # builddir=$(find /var/workdir/build/BUILD -maxdepth 1 -mindepth 1 -type d)
+          # echo "INFO: source prepared in $builddir"
           # echo "$builddir" > $(results.PREPARED_SOURCE_ARTIFACT.path)
-        else
-          echo "ERROR: source prep with 'rpmbuild -bp --nodeps' failed"
+          # else
+          echo "ERROR: source prep with 'rpmbuild -rp --nodeps' failed"
           # TODO: fallback, simple extraction of archives, maybe use /usr/lib/rpm/rpmuncompress
           exit 1
         fi
@@ -120,7 +150,7 @@ spec:
       args:
         - create
         - --store
-        - $(step.results.IMAGE_REPO.path)
+        - $(steps.parse-snapshot.results.OCI_STORAGE)
         - $(results.PREPARED_SOURCE_ARTIFACT.path)=/var/workdir/build/BUILD
   volumes:
     - name: trusted-ca
