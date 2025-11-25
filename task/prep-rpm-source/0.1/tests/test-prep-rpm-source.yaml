@@ -1,0 +1,57 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-prep-rpm-source
+  labels:
+    appstudio.openshift.io/component: libecpg
+spec:
+  description: |
+    Test the prep-rpm-source task
+  tasks:
+    - name: prep-rpm-source
+      taskRef:
+        name: prep-rpm-source
+      params:
+      - name: SNAPSHOT
+        value: |-
+          {
+            "components": [
+              {
+                "name":"libecpg",
+                "containerImage": "quay.io/sfowler/rpmbuild-pipeline@sha256:88bbd17386301a05c7603c3657a514ee4b5c87d71f5a658279f63027014f50a0",
+                "source":{
+                  "git":{
+                    "url":"git@some-gitlab-instance.com:sfowler/libecpg.git",
+                    "revision":"65165a6164e155caa772cf9930031466dbff7721"
+                  }
+                }
+              }
+            ]
+          }
+    - name: check-result
+      runAfter:
+        - prep-rpm-source
+      params:
+        - name: result-artifact
+          value: $(tasks.prep-rpm-source.results.PREPARED_SOURCE_ARTIFACT)
+      taskSpec:
+        params:
+          - name: result-artifact
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+            env:
+            - name: RESULT
+              value: $(params.result-artifact)
+            script: |
+              #!/bin/bash
+
+              set -e
+              set -x
+
+              echo "$RESULT"
+              [[ -n "$RESULT" ]] || (echo "RESULT is empty" && exit 1)
+
+              # trim oci: prefix
+              oras blob fetch --descriptor "${RESULT#oci:}"

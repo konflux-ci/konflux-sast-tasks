@@ -1,0 +1,190 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: prep-rpm-source
+  annotations:
+    tekton.dev/pipelines.minVersion: 0.12.1
+    tekton.dev/tags: konflux
+  labels:
+    app.kubernetes.io/version: "0.1"
+spec:
+  description: |-
+    Prepare RPM source for SAST scanning.
+  params:
+    - name: SNAPSHOT
+      description: The JSON string of the Snapshot produced by the build pipeline
+      type: string
+    - name: caTrustConfigMapKey
+      description: The name of the key in the ConfigMap that contains the
+        CA bundle data.
+      type: string
+      default: ca-bundle.crt
+    - name: caTrustConfigMapName
+      description: The name of the ConfigMap to read CA bundle data from.
+      type: string
+      default: trusted-ca
+  results:
+    - name: PREPARED_SOURCE_ARTIFACT
+      description: Trusted artifact with prepared RPM source code.
+    - name: IMAGE_REPO
+      description: Remote image repo (without tag).
+    - name: IMAGE_DIGEST
+      description: Digest of component container image.
+  stepTemplate:
+    volumeMounts:
+      - mountPath: /var/workdir
+        name: workdir
+  steps:
+    # based on https://github.com/konflux-ci/integration-examples/blob/main/tasks/test_metadata.yaml
+    - name: parse-snapshot
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      env:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: COMPONENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['appstudio.openshift.io/component']
+      results:
+        - name: OCI_STORAGE
+          description: |
+            OCI registry URL where the pipeline stores trusted artifacts, including
+            both resulting artifacts and intermediary by-products.
+        - name: SRPM_BLOB_ARTIFACT
+          description: repo:digest of SRPM produce during build pipeline
+        - name: SRPM_NAME
+          description: Filename of the source RPM artifact
+        - name: COMPONENT_DIGEST
+          description: Digest of component container image
+      script: |
+        #!/usr/bin/env bash
+
+        set -euo pipefail
+        set -x
+
+        # DEBUG
+        echo "${SNAPSHOT}"
+
+        COMPONENT_CONTAINER_IMAGE=$(jq -r --arg component_name "${COMPONENT_NAME}" '.components[] | select(.name == $component_name) | .containerImage' <<< "${SNAPSHOT}")
+        # remote registry without tag/digest
+        REPO="${COMPONENT_CONTAINER_IMAGE%@*}"
+
+        MANIFEST=$(oras manifest get "${COMPONENT_CONTAINER_IMAGE}")
+        COMPONENT_DIGEST=$(oras resolve "${COMPONENT_CONTAINER_IMAGE}")
+        BLOB_JSON=$(echo -n "$MANIFEST" | jq -r '.layers[] | select( .annotations["org.opencontainers.image.title"] | endswith(".src.rpm"))')
+        TITLE=$(echo -n "$BLOB_JSON" | jq -r '.annotations["org.opencontainers.image.title"]')
+        DIGEST=$(echo -n "$BLOB_JSON" | jq -r '.digest')
+
+        # step results
+        # use repo only (no tag/digest) for OCI_STORAGE param, because we don't need a new tag for new artifact
+        echo -n "${REPO}" > "$(step.results.OCI_STORAGE.path)"
+        echo -n "${REPO}@${DIGEST}" > "$(step.results.SRPM_BLOB_ARTIFACT.path)"
+        echo -n "${TITLE}" > "$(step.results.SRPM_NAME.path)"
+        echo -n "${COMPONENT_DIGEST}" > "$(step.results.COMPONENT_DIGEST.path)"
+
+    - name: set-task-results
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      env:
+        - name: IMAGE_REPO
+          value: $(steps.parse-snapshot.results.OCI_STORAGE)
+        - name: COMPONENT_DIGEST
+          value: $(steps.parse-snapshot.results.COMPONENT_DIGEST)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        # task results from step results
+        # necessary because apparently a single step cannot write to both task results and step results
+        echo -n "${IMAGE_REPO}" > "$(results.IMAGE_REPO.path)"
+        echo -n "${COMPONENT_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
+
+    # XXX use-trusted-artifact only supports extraction to a directory, if the artifact
+# is something like an SRPM, extraction will fail. So for now we use a custom retrieval
+# method with oras
+#
+# - name: use-trusted-artifact
+#   image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+#   args:
+#     - use
+#     - oci:$(steps.parse-snapshot.results.SRPM_BLOB_ARTIFACT)=/var/workdir/source
+#   env:
+#     - name: DEBUG
+#       value: "1"
+#   volumeMounts:
+#     - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+#       name: trusted-ca
+#       readOnly: true
+#       subPath: ca-bundle.crt
+
+    - name: get-srpm
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      workingDir: /var/workdir/source
+      env:
+        - name: BLOB_URL
+          value: $(steps.parse-snapshot.results.SRPM_BLOB_ARTIFACT)
+        - name: SRPM_NAME
+          value: $(steps.parse-snapshot.results.SRPM_NAME)
+      script: |
+        #!/bin/bash
+
+        set -e
+        set -x
+
+        echo "Selecting auth for $BLOB_URL"
+
+        TMP_WORKDIR=$(mktemp -d --tmpdir get-srpm.XXXXXX)
+        trap 'rm -rf $TMP_WORKDIR' EXIT
+
+        AUTHFILE=$(mktemp --tmpdir="$TMP_WORKDIR" "auth-XXXXXX.json")
+        select-oci-auth.sh "${BLOB_URL}" > "${AUTHFILE}"
+
+        oras blob get --registry-config "${AUTHFILE}" "${BLOB_URL}" --output "${SRPM_NAME}"
+
+    - name: prep-rpm-source
+      # this is a custom image based on the upstream image:
+      # https://github.com/konflux-ci/rpmbuild-pipeline-environment-container/tree/main
+      # downstream environment image contains extras like brewkoji config
+      # TODO - add rpmbuild to environment image?
+      image: quay.io/sfowler/rpmbuild-environment:latest
+      imagePullPolicy: Always
+      workingDir: /var/workdir/source
+      env:
+        - name: SRPM_NAME
+          value: $(steps.parse-snapshot.results.SRPM_NAME)
+      script: |
+        #!/bin/bash
+
+        set -euo pipefail
+        set -x
+
+        # prepare RPM source, extract archives and apply patches
+        rpmbuild --rp --nodeps "${SRPM_NAME}" --define '_topdir /var/workdir/build' --define "_sourcedir $(pwd)"
+        exit_code=$?
+        if [ ! $exit_code -eq 0 ]; then
+          # if successful BUILD directory will contain ready source
+          # builddir=$(find /var/workdir/build/BUILD -maxdepth 1 -mindepth 1 -type d)
+          # echo "INFO: source prepared in $builddir"
+          # echo "$builddir" > $(results.PREPARED_SOURCE_ARTIFACT.path)
+          # else
+          echo "ERROR: source prep with 'rpmbuild -rp --nodeps' failed"
+          # TODO: fallback, simple extraction of archives, maybe use /usr/lib/rpm/rpmuncompress
+          exit 1
+        fi
+    - name: create-trusted-artifact
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      args:
+        - create
+        - --store
+        - $(steps.parse-snapshot.results.OCI_STORAGE)
+        - $(results.PREPARED_SOURCE_ARTIFACT.path)=/var/workdir/build/BUILD
+  volumes:
+    - name: trusted-ca
+      configMap:
+        items:
+          - key: $(params.caTrustConfigMapKey)
+            path: ca-bundle.crt
+        name: $(params.caTrustConfigMapName)
+        optional: true
+    - name: workdir
+      emptyDir: {}
