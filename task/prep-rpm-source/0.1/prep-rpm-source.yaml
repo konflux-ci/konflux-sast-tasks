@@ -14,6 +14,7 @@ spec:
   params:
     - name: SNAPSHOT
       description: The JSON string of the Snapshot produced by the build pipeline
+      type: string
     - name: caTrustConfigMapKey
       description: The name of the key in the ConfigMap that contains the
         CA bundle data.
@@ -54,6 +55,8 @@ spec:
           description: repo:digest of SRPM produce during build pipeline
         - name: SRPM_NAME
           description: Filename of the source RPM artifact
+        - name: COMPONENT_DIGEST
+          description: Digest of component container image
       script: |
         #!/usr/bin/env bash
 
@@ -78,29 +81,41 @@ spec:
         echo -n "${REPO}" > "$(step.results.OCI_STORAGE.path)"
         echo -n "${REPO}@${DIGEST}" > "$(step.results.SRPM_BLOB_ARTIFACT.path)"
         echo -n "${TITLE}" > "$(step.results.SRPM_NAME.path)"
+        echo -n "${COMPONENT_DIGEST}" > "$(step.results.COMPONENT_DIGEST.path)"
 
-        # task results
-        # these values are used for later tasks to use `oras attach`
-        echo -n "${REPO}" > "$(results.IMAGE_REPO.path)"
+    - name: set-task-results
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+      env:
+        - name: IMAGE_REPO
+          value: $(steps.parse-snapshot.results.OCI_STORAGE)
+        - name: COMPONENT_DIGEST
+          value: $(steps.parse-snapshot.results.COMPONENT_DIGEST)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        # task results from step results
+        # necessary because apparently a single step cannot write to both task results and step results
+        echo -n "${IMAGE_REPO}" > "$(results.IMAGE_REPO.path)"
         echo -n "${COMPONENT_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
 
     # XXX use-trusted-artifact only supports extraction to a directory, if the artifact
-    # is something like an SRPM, extraction will fail. So for now we use a custom retrieval
-    # method with oras
-    #
-    # - name: use-trusted-artifact
-    #   image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
-    #   args:
-    #     - use
-    #     - oci:$(steps.parse-snapshot.results.SRPM_BLOB_ARTIFACT)=/var/workdir/source
-    #   env:
-    #     - name: DEBUG
-    #       value: "1"
-    #   volumeMounts:
-    #     - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
-    #       name: trusted-ca
-    #       readOnly: true
-    #       subPath: ca-bundle.crt
+# is something like an SRPM, extraction will fail. So for now we use a custom retrieval
+# method with oras
+#
+# - name: use-trusted-artifact
+#   image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
+#   args:
+#     - use
+#     - oci:$(steps.parse-snapshot.results.SRPM_BLOB_ARTIFACT)=/var/workdir/source
+#   env:
+#     - name: DEBUG
+#       value: "1"
+#   volumeMounts:
+#     - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+#       name: trusted-ca
+#       readOnly: true
+#       subPath: ca-bundle.crt
 
     - name: get-srpm
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:43d997ac61bef77eaee0413fe50c29b66eb4d0d32066f5bd4a83f39e4b2d9457
