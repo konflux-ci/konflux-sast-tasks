@@ -26,6 +26,10 @@ spec:
   results:
     - name: PREPARED_SOURCE_ARTIFACT
       description: Trusted artifact with prepared RPM source code.
+    - name: IMAGE_REPO
+      description: Remote image repo (without tag).
+    - name: IMAGE_DIGEST
+      description: Digest of component container image.
   stepTemplate:
     volumeMounts:
       - mountPath: /var/workdir
@@ -46,8 +50,6 @@ spec:
           description: |
             OCI registry URL where the pipeline stores trusted artifacts, including
             both resulting artifacts and intermediary by-products.
-        - name: COMPONENT_DIGEST
-          description: Digest of component container image.
         - name: SRPM_BLOB_ARTIFACT
           description: repo:digest of SRPM produce during build pipeline
         - name: SRPM_NAME
@@ -71,11 +73,16 @@ spec:
         TITLE=$(echo -n "$BLOB_JSON" | jq -r '.annotations["org.opencontainers.image.title"]')
         DIGEST=$(echo -n "$BLOB_JSON" | jq -r '.digest')
 
+        # step results
         # use repo only (no tag/digest) for OCI_STORAGE param, because we don't need a new tag for new artifact
         echo -n "${REPO}" > "$(step.results.OCI_STORAGE.path)"
-        echo -n "${COMPONENT_DIGEST}" > "$(step.results.COMPONENT_DIGEST.path)"
         echo -n "${REPO}@${DIGEST}" > "$(step.results.SRPM_BLOB_ARTIFACT.path)"
         echo -n "${TITLE}" > "$(step.results.SRPM_NAME.path)"
+
+        # task results
+        # these values are used for later tasks to use `oras attach`
+        echo -n "${REPO}" > "$(results.IMAGE_REPO.path)"
+        echo -n "${COMPONENT_DIGEST}" > "$(results.IMAGE_DIGEST.path)"
 
     # XXX use-trusted-artifact only supports extraction to a directory, if the artifact
     # is something like an SRPM, extraction will fail. So for now we use a custom retrieval
