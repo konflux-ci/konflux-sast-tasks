@@ -2,7 +2,7 @@ module github.com/konflux-ci/build-definitions/task-generator/remote
 
 go 1.24.0
 
-toolchain go1.25.0
+toolchain go1.25.5
 
 require (
 	github.com/tektoncd/pipeline v1.3.1
