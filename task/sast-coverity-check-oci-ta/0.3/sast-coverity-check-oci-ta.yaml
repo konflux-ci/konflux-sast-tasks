@@ -348,6 +348,11 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
+      computeResources:
+        limits:
+          memory: 5Gi
+        requests:
+          memory: 5Gi
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
       args:
         - use
@@ -1005,7 +1010,7 @@ spec:
           memory: 16Gi
         requests:
           cpu: "4"
-          memory: 4Gi
+          memory: 16Gi
       securityContext:
         capabilities:
           add:
@@ -1215,7 +1220,7 @@ spec:
         fi
       computeResources:
         limits:
-          memory: 16Gi
+          memory: 15Gi
         requests:
           cpu: "4"
-          memory: 4Gi
+          memory: 15Gi
