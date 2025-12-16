@@ -225,7 +225,15 @@ spec:
           echo "INFO: Scanning directory: $resolved_path"
           # We do want to expand ARGS (it can be multiple CLI flags, not just one)
           # shellcheck disable=SC2086
-          snyk code test $ARGS --severity-threshold="$SEVERITY_THRESHOLD" "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json" 1>&2 >>stdout.txt || true
+          snyk code test $ARGS --severity-threshold="$SEVERITY_THRESHOLD" "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json" 1>&2 >>stdout.txt
+          cmd_exit_code=$?
+          # Track the exit code: if any snyk command fails, preserve the failure
+          # Exit codes: 0 = success, 1 = vulnerabilities found, 2 = error, 3 = no supported files
+          # Error codes (2+) always override, warning codes (1,3) only if no previous error
+          if [[ "$cmd_exit_code" -ne 0 ]] && [[ "$cmd_exit_code" -ne 1 ]] && [[ "$cmd_exit_code" -ne 3 ]]; then
+            SNYK_EXIT_CODE=$cmd_exit_code
+          fi
+
         done
 
         # Merge all SARIF outputs
