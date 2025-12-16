@@ -109,6 +109,7 @@ jobs:
         if: steps.tasks-to-be-tested.outputs.tasklist != ''
         env:
           TASK_LIST: ${{ steps.tasks-to-be-tested.outputs.tasklist }}
+          TEST_SNYK_TOKEN: ${{ secrets.TEST_SNYK_TOKEN }}
         run: |
           echo "Tasks to be tested: ${TASK_LIST}"
           cd $GITHUB_WORKSPACE/build-definitions
