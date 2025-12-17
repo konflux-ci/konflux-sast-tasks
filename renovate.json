@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "dependencyDashboard": false,
+  "prConcurrentLimit": 40,
+  "tekton": {
+    "fileMatch": [
+      "\\.yaml$",
+      "\\.yml$"
+    ],
+    "includePaths": [
+      ".tekton/**",
+      "task/**"
+    ]
+  },
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "quay.io/konflux-ci/appstudio-utils"
+      ],
+      "schedule": [
+        "on sunday"
+      ]
+    },
+    {
+      "groupName": "github-actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "schedule": [
+        "on sunday"
+      ],
+      "automerge": true
+    },
+    {
+      "groupName": "go-modules",
+      "matchManagers": [
+        "gomod"
+      ],
+      "schedule": [
+        "on sunday"
+      ],
+      "automerge": true
+    }
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        ".github/workflows/run-task-tests.yaml"
+      ],
+      "matchStrings": [
+        "ref:\\s+(?<currentDigest>[a-f0-9]{40})"
+      ],
+      "currentValueTemplate": "main",
+      "depNameTemplate": "konflux-ci",
+      "packageNameTemplate": "https://github.com/konflux-ci/konflux-ci",
+      "datasourceTemplate": "git-refs"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^task/.*/recipe\\.yaml$",
+        "^task/.+/patch\\.yaml$"
+      ],
+      "matchStrings": [
+        "(?:image: |tooling-image=)(?:['\"])?(?<depName>[0-9a-z./-]+)(?::(?<currentValue>[0-9a-z.-]+))?@(?<currentDigest>sha256:[a-f0-9]{64})(?:['\"])?"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}
