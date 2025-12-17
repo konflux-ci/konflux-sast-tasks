@@ -1,14 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
   "dependencyDashboard": false,
   "prConcurrentLimit": 40,
   "tekton": {
-    "fileMatch": [
-      "\\.yaml$",
-      "\\.yml$"
+    "managerFilePatterns": [
+      "/\\.yaml$/",
+      "/\\.yml$/"
     ],
     "includePaths": [
       ".tekton/**",
@@ -51,8 +51,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        ".github/workflows/run-task-tests.yaml"
+      "managerFilePatterns": [
+        "/.github/workflows/run-task-tests.yaml/"
       ],
       "matchStrings": [
         "ref:\\s+(?<currentDigest>[a-f0-9]{40})"
@@ -64,9 +64,9 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^task/.*/recipe\\.yaml$",
-        "^task/.+/patch\\.yaml$"
+      "managerFilePatterns": [
+        "/^task/.*/recipe\\.yaml$/",
+        "/^task/.+/patch\\.yaml$/"
       ],
       "matchStrings": [
         "(?:image: |tooling-image=)(?:['\"])?(?<depName>[0-9a-z./-]+)(?::(?<currentValue>[0-9a-z.-]+))?@(?<currentDigest>sha256:[a-f0-9]{64})(?:['\"])?"
