@@ -4,19 +4,18 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/konflux-ci/konflux-sast-tasks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main" && ( "task/sast-unicode-check-oci-ta/0.3/***".pathChanged() || ".tekton/sast-unicode-check-oci-ta-v03-pull-request.yaml".pathChanged()
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "main" && ( "task/sast-unicode-check/0.4/***".pathChanged() || ".tekton/sast-unicode-check-v04-pull-request.yaml".pathChanged()
       )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
-    appstudio.openshift.io/component: sast-unicode-check-oci-ta-v03
+    appstudio.openshift.io/component: sast-unicode-check-v04
     pipelines.appstudio.openshift.io/type: build
-  name: sast-unicode-check-oci-ta-v03-on-pull-request
+  name: sast-unicode-check-v04-on-push
   namespace: sast-tenant
 spec:
   params:
@@ -25,14 +24,11 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-oci-ta-v03:on-pr-{{revision}}
-  - name: image-expires-after
-    value: 5d
+    value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-v04:{{revision}}
   - name: dockerfile
     value: Dockerfile
   - name: path-context
-    # exclude recipe.yaml file
-    value: task/sast-unicode-check-oci-ta/0.3,!task/sast-unicode-check-oci-ta/0.3/recipe.yaml
+    value: task/sast-unicode-check/0.4
   pipelineSpec:
     finally:
     - name: show-summary
@@ -290,7 +286,7 @@ spec:
         - name: name
           value: sast-unicode-check-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.2@sha256:5a93fe7f1f3990167d87cb3f30bc13293e02cf5a6da88f46cf0368b3328c2d56
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.3@sha256:e5a8d3e8e7be7246a1460385b95c084ea6e8fe7520d40fe4389deb90f1bf5176
         - name: kind
           value: task
         resolver: bundles
@@ -322,7 +318,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-sast-unicode-check-oci-ta-v03
+    serviceAccountName: build-pipeline-sast-unicode-check-v04
   workspaces:
   - name: git-auth
     secret:

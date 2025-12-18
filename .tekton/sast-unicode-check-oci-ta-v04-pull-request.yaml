@@ -9,14 +9,14 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main" && ( "task/sast-unicode-check-oci-ta/0.3/***".pathChanged() || ".tekton/sast-unicode-check-oci-ta-v03-pull-request.yaml".pathChanged()
+      == "main" && ( "task/sast-unicode-check-oci-ta/0.4/***".pathChanged() || ".tekton/sast-unicode-check-oci-ta-v04-pull-request.yaml".pathChanged()
       )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
-    appstudio.openshift.io/component: sast-unicode-check-oci-ta-v03
+    appstudio.openshift.io/component: sast-unicode-check-oci-ta-v04
     pipelines.appstudio.openshift.io/type: build
-  name: sast-unicode-check-oci-ta-v03-on-pull-request
+  name: sast-unicode-check-oci-ta-v04-on-pull-request
   namespace: sast-tenant
 spec:
   params:
@@ -25,14 +25,14 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-oci-ta-v03:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-oci-ta-v04:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
     value: Dockerfile
   - name: path-context
     # exclude recipe.yaml file
-    value: task/sast-unicode-check-oci-ta/0.3,!task/sast-unicode-check-oci-ta/0.3/recipe.yaml
+    value: task/sast-unicode-check-oci-ta/0.4,!task/sast-unicode-check-oci-ta/0.4/recipe.yaml
   pipelineSpec:
     finally:
     - name: show-summary
@@ -322,7 +322,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-sast-unicode-check-oci-ta-v03
+    serviceAccountName: build-pipeline-sast-unicode-check-oci-ta-v04
   workspaces:
   - name: git-auth
     secret:

@@ -81,6 +81,11 @@ prepare_pipelines() {
     local -a pl_names_in_config
     local pushed_pipelines
 
+    # we don't have a pipelines dir in our repo, so let's use
+    # build-deinfitions for testing our migrations
+    git clone --depth 1 https://github.com/konflux-ci/build-definitions.git
+    cp -r build-definitions/pipelines pipelines
+
     mkdir -p "${WORK_DIR}/pipelines/pushed"
 
     # Download pushed pipeline bundles from ConfigMap
