@@ -64,7 +64,8 @@ spec:
         optional: true
   steps:
     - name: sast-unicode-check
-      image: quay.io/konflux-ci/konflux-test:v1.4.39@sha256:89cdc9d251e15d07018548137b4034669df8e9e2b171a188c8b8201d3638cb17
+      # XXX testing image only, don't merge!
+      image: quay.io/redhat-user-workloads/rhtap-integration-tenant/konflux-test:on-pr-8a63266d7486587ffa2c9f8020dccdbcfb09c074-linux-x86-64
       computeResources:
         limits:
           memory: 4Gi
@@ -113,8 +114,6 @@ spec:
 
         echo "INFO: The PROJECT_NAME used is: ${PROJECT_NAME}"
 
-        SCAN_PROP=""
-
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
         if [ -f "$ca_bundle" ]; then
           echo "INFO: Using mounted CA bundle: $ca_bundle"
@@ -122,38 +121,11 @@ spec:
           update-ca-trust
         fi
 
-        # Clone the source code from upstream repo
-        GIT_URL=$(echo "${FIND_UNICODE_CONTROL_GIT_URL}" | awk -F'#' '{print $1}')
-        REV=$(echo "${FIND_UNICODE_CONTROL_GIT_URL}" | awk -F'#' '{print $2}')
-
-        # Clone find-unicode-control repository
-        if ! git clone "${GIT_URL}" find-unicode-control; then
-            echo "Failed to clone the repository: ${GIT_URL}" >&2
-            note="Task $(context.task.name) failed: For details, check Tekton task log."
-            ERROR_OUTPUT=$(make_result_json -r ERROR -t "$note")
-            echo "${ERROR_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
-            exit 1
-        fi
-
-        if [[ -n "${REV}" ]]; then
-            if ! git -C ./find-unicode-control/ checkout "${REV}"; then
-                echo "Failed to checkout the repository: ${GIT_URL} to ${REV}" >&2
-                note="Task $(context.task.name) failed: For details, check Tekton task log."
-                ERROR_OUTPUT=$(make_result_json -r ERROR -t "$note")
-                echo "${ERROR_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
-                exit 1
-            fi
-            SCAN_PROP="find-unicode-control-git-url:${FIND_UNICODE_CONTROL_GIT_URL}"
-        else
-            git_url_suffix=$(git -C ./find-unicode-control/ rev-parse HEAD)
-            SCAN_PROP="find-unicode-control-git-url:${FIND_UNICODE_CONTROL_GIT_URL}#${git_url_suffix}"
-        fi
-
-        # Find unicode control
+        SCAN_PROP="https://github.com/siddhesh/find-unicode-control.git#c2accbfbba7553a8bc1ebd97089ae08ad8347e58"
         FUC_EXIT_CODE=0
 
         # shellcheck disable=SC2086
-        LANG=en_US.utf8 ./find-unicode-control/find_unicode_control.py ${FIND_UNICODE_CONTROL_ARGS} "${SOURCE_CODE_DIR}/source" \
+        LANG=en_US.utf8 find_unicode_control.py ${FIND_UNICODE_CONTROL_ARGS} "${SOURCE_CODE_DIR}/source" \
             >raw_sast_unicode_check_out.txt \
             2>raw_sast_unicode_check_out.log \
             || FUC_EXIT_CODE=$?
