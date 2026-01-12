@@ -288,10 +288,10 @@ spec:
   stepTemplate:
     computeResources:
       limits:
-        memory: 4Gi
+        memory: 128Mi
       requests:
         cpu: "1"
-        memory: 1Gi
+        memory: 128Mi
     env:
       - name: ACTIVATION_KEY
         value: $(params.ACTIVATION_KEY)
@@ -348,6 +348,11 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
+      computeResources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 4Gi
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa601d847eafa87747894b770eff43b47cffe2cc39059bb345ee58b378473b8f
       args:
         - use
@@ -1005,7 +1010,7 @@ spec:
           memory: 16Gi
         requests:
           cpu: "4"
-          memory: 4Gi
+          memory: 16Gi
       securityContext:
         capabilities:
           add:
@@ -1215,7 +1220,7 @@ spec:
         fi
       computeResources:
         limits:
-          memory: 16Gi
+          memory: 9Gi
         requests:
           cpu: "4"
-          memory: 4Gi
+          memory: 9Gi
