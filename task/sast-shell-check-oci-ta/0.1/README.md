@@ -1,7 +1,7 @@
 # sast-shell-check-oci-ta task
 
 The sast-shell-check task uses [shellcheck](https://www.shellcheck.net/) tool to perform Static Application Security Testing (SAST), a popular cloud-native application security platform. This task leverages the shellcheck wrapper (csmock-plugin-shellcheck-core) to run shellcheck on a directory tree.
-ShellCheck is a static analysis tool, gives warnings and suggestions for bash/sh shell scripts.
+ShellCheck is a static analysis tool, gives warnings and suggestions for bash/sh shell scripts. This task can run on x86 and arm.
 
 ## Parameters
 |name|description|default value|required|
