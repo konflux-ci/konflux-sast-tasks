@@ -33,8 +33,10 @@ spec:
       type: string
       default: ""
     - name: IMP_FINDINGS_ONLY
-      description: Report only important findings. Default is true. To report
-        all findings, specify "false"
+      description: Report only important findings in task result. Default
+        is "true". To report all findings in task result, specify "false".
+        Uploaded SARIF report to remote registry always includes all findings,
+        regardless of severity level.
       type: string
       default: "true"
     - name: KFP_GIT_URL
@@ -189,10 +191,6 @@ spec:
 
         SNYK_EXIT_CODE=0
         SOURCE_CODE_DIR=/var/workdir
-        SEVERITY_THRESHOLD="high"
-        if [ "${IMP_FINDINGS_ONLY}" == "false" ]; then
-          SEVERITY_THRESHOLD="low"
-        fi
 
         # We ignore files using snyk ignore if the user set up the IGNORE_FILE_PATHS variable.
         (cd "${SOURCE_CODE_DIR}" && IFS="," && for path in $IGNORE_FILE_PATHS; do
@@ -225,7 +223,7 @@ spec:
           echo "INFO: Scanning directory: $resolved_path"
           # We do want to expand ARGS (it can be multiple CLI flags, not just one)
           # shellcheck disable=SC2086
-          snyk code test $ARGS --severity-threshold="$SEVERITY_THRESHOLD" "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json" 1>&2 >>stdout.txt
+          snyk code test $ARGS "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json" 1>&2 >>stdout.txt
           cmd_exit_code=$?
           # Track the exit code: if any snyk command fails, preserve the failure
           # Exit codes: 0 = success, 1 = vulnerabilities found, 2 = error, 3 = no supported files
@@ -355,8 +353,21 @@ spec:
             --set-scan-prop snyk-scanned-files-total:"${total_files}" \
             filtered_sast_snyk_check_out.json >sast_snyk_check_out.sarif
 
+          # Create filtered SARIF for Tekton task result based on IMP_FINDINGS_ONLY parameter
+          if [ "${IMP_FINDINGS_ONLY}" == "true" ]; then
+            # Filter to only "error" level or higher (high/critical severity) for Tekton task result
+            # In SARIF, defects are given a level like "error" or "warning". Snyk maps "high" level findings to "error".
+            # - "error" → importance level 1
+            # - "warning" (or missing level) → importance level 0
+            RESULT_SARIF="result_sast_snyk_check_out.sarif"
+            csgrep --mode=sarif --imp-level 1 sast_snyk_check_out.sarif >"$RESULT_SARIF"
+          else
+            # Use all findings for Tekton task result
+            RESULT_SARIF="sast_snyk_check_out.sarif"
+          fi
+
           TEST_OUTPUT=
-          parse_test_output "$(context.task.name)" sarif sast_snyk_check_out.sarif || true
+          parse_test_output "$(context.task.name)" sarif "$RESULT_SARIF" || true
 
         # When the test is skipped, the "SNYK_EXIT_CODE" is 3 and it can also be 3 in some other situation
         elif [[ "$test_not_skipped" -eq 0 ]]; then
