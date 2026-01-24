@@ -97,7 +97,7 @@ spec:
           readOnly: true
           subPath: ca-bundle.crt
     - name: sast-shell-check
-      image: quay.io/konflux-ci/konflux-test:v1.4.39@sha256:89cdc9d251e15d07018548137b4034669df8e9e2b171a188c8b8201d3638cb17
+      image: quay.io/konflux-ci/konflux-test:v1.4.46@sha256:c7e2099ad87d4c65284cba5df8488eae64d16ea0baff344c549ed7ca2415ebce
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /mnt/trusted-ca
