@@ -363,7 +363,7 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
-      image: quay.io/konflux-ci/oras:latest@sha256:27342c6ee2f4b7becffc009174f0912dca35008df61e44bf79d35ee8a730af62
+      image: quay.io/konflux-ci/oras:latest@sha256:2fdb02259e6d197b95e9d757f474e51a1c7412abc54e6901393a00a238bbeb27
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
