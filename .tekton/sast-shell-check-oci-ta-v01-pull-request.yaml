@@ -9,7 +9,6 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main" && ( "task/sast-shell-check-oci-ta/0.1/***".pathChanged() || ".tekton/sast-shell-check-oci-ta-v01-pull-request.yaml".pathChanged() )
-  creationTimestamp:
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
     appstudio.openshift.io/component: sast-shell-check-oci-ta-v01

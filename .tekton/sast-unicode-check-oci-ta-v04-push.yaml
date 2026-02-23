@@ -8,7 +8,6 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && ( "task/sast-unicode-check-oci-ta/0.4/***".pathChanged() || ".tekton/sast-unicode-check-oci-ta-v04-pull-request.yaml".pathChanged() )
-  creationTimestamp:
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
     appstudio.openshift.io/component: sast-unicode-check-oci-ta-v04

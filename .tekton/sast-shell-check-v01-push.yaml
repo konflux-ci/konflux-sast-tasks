@@ -8,7 +8,6 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && ( "task/sast-shell-check/0.1/***".pathChanged() || ".tekton/sast-shell-check-v01-pull-request.yaml".pathChanged() )
-  creationTimestamp:
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
     appstudio.openshift.io/component: sast-shell-check-v01
