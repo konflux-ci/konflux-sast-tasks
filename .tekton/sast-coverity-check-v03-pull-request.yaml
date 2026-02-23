@@ -28,7 +28,7 @@ spec:
   - name: dockerfile
     value: Dockerfile
   - name: path-context
-    value: task/sast-coverity-check/0.3
+    value: task/sast-coverity-check/0.3,!task/sast-coverity-check/0.3/kustomization.yaml,!task/sast-coverity-check/0.3/patch.yaml
   pipelineSpec:
     finally:
     - name: show-summary
