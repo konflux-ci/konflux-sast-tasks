@@ -261,8 +261,8 @@ spec:
         csgrep --mode=evtstat "$OUTPUT_FILE"
         csgrep --mode=sarif "$OUTPUT_FILE" >shellcheck-results.sarif
 
-        note="Task $(context.task.name) completed successfully."
-        TEST_OUTPUT=$(make_result_json -r SUCCESS -t "$note")
+        TEST_OUTPUT=
+        parse_test_output "$(context.task.name)" sarif shellcheck-results.sarif || true
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
       computeResources:
         limits:

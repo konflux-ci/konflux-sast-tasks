@@ -241,8 +241,8 @@ spec:
         csgrep --mode=evtstat "$OUTPUT_FILE"
         csgrep --mode=sarif "$OUTPUT_FILE" > shellcheck-results.sarif
 
-        note="Task $(context.task.name) completed successfully."
-        TEST_OUTPUT=$(make_result_json -r SUCCESS -t "$note")
+        TEST_OUTPUT=
+        parse_test_output "$(context.task.name)" sarif shellcheck-results.sarif || true
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:d126f98e16bfad71aab782eb212a5be701e2cde915d294a7bd6423a4ab448705
