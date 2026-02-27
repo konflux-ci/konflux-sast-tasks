@@ -62,8 +62,43 @@ spec:
       workspaces:
         - name: workspace
           workspace: tests-workspace
+      params:
+        - name: test-output
+          value: $(tasks.scan-with-shellcheck.results.TEST_OUTPUT)
       taskSpec:
+        params:
+          - name: test-output
+        workspaces:
+          - name: workspace
         steps:
+          - name: check-test-output
+            image: quay.io/konflux-ci/konflux-test:v1.4.28@sha256:4a5423e125fc28db800421422d9933290dc4b62a22401d74cd3348c03107a5d9
+            env:
+              - name: TEST_OUTPUT
+                value: $(params.test-output)
+            script: |
+              #!/usr/bin/env bash
+              set -eu
+
+              echo "Verifying TEST_OUTPUT result..."
+              echo "TEST_OUTPUT: $TEST_OUTPUT"
+
+              # Verify the result is FAILURE since we have findings
+              if ! echo "$TEST_OUTPUT" | jq -e '.result == "FAILURE"' > /dev/null; then
+                echo "FAIL: Expected TEST_OUTPUT.result to be FAILURE when findings are present"
+                echo "$TEST_OUTPUT" | jq '.'
+                exit 1
+              fi
+
+              # Verify we have 10 failures (8 SC1083 + 2 SC2069)
+              failures=$(echo "$TEST_OUTPUT" | jq -r '.failures')
+              if [[ "$failures" != "10" ]]; then
+                echo "FAIL: Expected 10 failures, got $failures"
+                echo "$TEST_OUTPUT" | jq '.'
+                exit 1
+              fi
+
+              echo "PASS: TEST_OUTPUT shows FAILURE with 10 findings even with bad KFP repo"
           - name: check-result
             image: quay.io/konflux-ci/konflux-test:v1.4.28@sha256:4a5423e125fc28db800421422d9933290dc4b62a22401d74cd3348c03107a5d9
             script: |
