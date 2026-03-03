@@ -1,18 +1,17 @@
 name: Run Task Tests
 
 "on":
-  pull_request_target:
-    branches: [main]
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
   merge_group:
     types: [checks_requested]
 
 jobs:
   run-task-tests:
     runs-on: ubuntu-24.04
-    # this env contains secrets and requires review to run
-    # from external submitters
-    environment: run-task-tests
-
     steps:
       - name: Checkout build-defintions Repository
         uses: actions/checkout@v4
