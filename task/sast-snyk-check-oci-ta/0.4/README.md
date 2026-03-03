@@ -6,7 +6,7 @@ Follow the steps given [here](https://konflux-ci.dev/docs/testing/build/snyk/) t
 
 The snyk binary used in this Task comes from a container image defined in https://github.com/konflux-ci/konflux-test
 
-See https://snyk.io/product/snyk-code/ and https://snyk.io/ for more information about the snyk tool.
+See <https://snyk.io/product/snyk-code/> and <https://snyk.io/> for more information about the snyk tool.
 
 ## Parameters
 |name|description|default value|required|
