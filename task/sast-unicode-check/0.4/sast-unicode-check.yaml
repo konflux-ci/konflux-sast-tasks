@@ -233,7 +233,7 @@ spec:
         fi
         echo "${TEST_OUTPUT:-${ERROR_OUTPUT}}" | tee "$(results.TEST_OUTPUT.path)"
     - name: upload
-      image: quay.io/konflux-ci/oras:latest@sha256:f322638a8a337f26adda3f72d3fbcf7e1218a6d8d7e2365376487417a05e0f4e
+      image: quay.io/konflux-ci/oras:latest@sha256:180b50c7be50c20e3349a79df8dd6062fee0e0dd01aa30e9a09d1d07d9ebd0c2
       computeResources:
         limits:
           memory: 256Mi
