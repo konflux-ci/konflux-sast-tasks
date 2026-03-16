@@ -68,7 +68,7 @@ spec:
       taskSpec:
         steps:
           - name: check-result
-            image: quay.io/konflux-ci/konflux-test:v1.4.28@sha256:4a5423e125fc28db800421422d9933290dc4b62a22401d74cd3348c03107a5d9
+            image: quay.io/konflux-ci/konflux-test:v1.4.51@sha256:169f73f80fbde8d54f42416c5de8cc9214ecc7e8c89c70a3385285bbac32ad0a
             script: |
               #!/usr/bin/env bash
               set -eu
