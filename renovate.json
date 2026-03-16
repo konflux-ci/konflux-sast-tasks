@@ -73,5 +73,11 @@
       ],
       "datasourceTemplate": "docker"
     }
+  ],
+  "ignorePaths": [
+    "task/coverity-availability-check/**",
+    "task/sast-coverity-check/**",
+    ".tekton/coverity-availability-check*",
+    ".tekton/sast-coverity-check*"
   ]
 }
