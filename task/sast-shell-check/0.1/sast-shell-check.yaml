@@ -245,7 +245,7 @@ spec:
         parse_test_output "$(context.task.name)" sarif shellcheck-results.sarif || true
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
     - name: upload
-      image: quay.io/konflux-ci/oras:latest@sha256:180b50c7be50c20e3349a79df8dd6062fee0e0dd01aa30e9a09d1d07d9ebd0c2
+      image: quay.io/konflux-ci/oras:latest@sha256:6a46c5960cbcb81d9f6b0206163102d6f2e9e649ec231136f9ee33c02d3c1ad0
       computeResources:
         limits:
           memory: 256Mi
