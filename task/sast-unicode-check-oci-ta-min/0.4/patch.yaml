@@ -6,7 +6,14 @@
 #     1	sast-unicode-check
 #     2	upload
 
-# sast-shell-check step
+# use-trusted-artifact step
+- op: test
+  path: /spec/steps/0/name
+  value: use-trusted-artifact
+- op: remove
+  path: /spec/steps/0/computeResources
+
+# sast-unicode-check step
 - op: test
   path: /spec/steps/1/name
   value: sast-unicode-check
