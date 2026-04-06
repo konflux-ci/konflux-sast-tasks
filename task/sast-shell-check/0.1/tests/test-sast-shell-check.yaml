@@ -69,7 +69,7 @@ spec:
           - name: workspace
         steps:
           - name: check-test-output
-            image: quay.io/konflux-ci/konflux-test:v1.4.51@sha256:169f73f80fbde8d54f42416c5de8cc9214ecc7e8c89c70a3385285bbac32ad0a
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
             env:
               - name: TEST_OUTPUT
                 value: $(params.test-output)
@@ -97,7 +97,7 @@ spec:
 
               echo "PASS: TEST_OUTPUT shows FAILURE with 10 findings as expected"
           - name: check-result
-            image: quay.io/konflux-ci/konflux-test:v1.4.51@sha256:169f73f80fbde8d54f42416c5de8cc9214ecc7e8c89c70a3385285bbac32ad0a
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
             script: |
               #!/usr/bin/env bash
               set -eu
