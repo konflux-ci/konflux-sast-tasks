@@ -1,0 +1,50 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-coverity-availability-check-expired-license
+spec:
+  description: |
+    Test the coverity-availability-check when the Coverity license has expired
+  tasks:
+    - name: coverity-check
+      taskRef:
+        name: coverity-availability-check
+      params:
+        - name: COV_LICENSE
+          value: cov-license-expired
+    - name: check-result
+      runAfter:
+        - coverity-check
+      params:
+      - name: status
+        value: $(tasks.coverity-check.results.STATUS)
+      - name: test_output
+        value: $(tasks.coverity-check.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+        - name: status
+        - name: test_output
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.4.28@sha256:4a5423e125fc28db800421422d9933290dc4b62a22401d74cd3348c03107a5d9
+            env:
+            - name: STATUS
+              value: $(params.status)
+            - name: TEST_OUTPUT
+              value: $(params.test_output)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              # An expired license should cause:
+              # - Task succeeds (exit 0)
+              # - writes "failed" to the STATUS result
+              # - TEST_OUTPUT result is FAILURE with expired message
+              echo -n "Expected STATUS: "
+              [ "$STATUS" == "failed" ] && echo "true"
+              echo -n "Expected TEST_OUTPUT: "
+              echo "$TEST_OUTPUT" | jq -e '.result == "FAILURE" and .failures == 1'
+              echo -n "Expected expiry note: "
+              echo "$TEST_OUTPUT" | jq -e '.note | test("license expired")'
