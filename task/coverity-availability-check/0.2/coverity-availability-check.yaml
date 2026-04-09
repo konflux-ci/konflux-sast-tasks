@@ -65,6 +65,33 @@ spec:
         COV_LICENSE_PATH=/etc/secrets/cov/cov-license
         if [ -f "${COV_LICENSE_PATH}" ] && [ -s "${COV_LICENSE_PATH}" ]; then
           echo "Coverity license detected!"
+
+          # Check license expiry
+          EXPIRY_DATE=$(sed -n 's/.*<valid-until>\(.*\)<\/valid-until>.*/\1/p' "${COV_LICENSE_PATH}" || true)
+          if [ -n "$EXPIRY_DATE" ]; then
+            # Reformat "2020-Jan-01 08:00:00 UTC" -> "01 Jan 2020 08:00:00 UTC"
+            DATE_PART="${EXPIRY_DATE%% *}"
+            TIME_PART="${EXPIRY_DATE#* }"
+            IFS=- read -r YEAR MON DAY <<< "$DATE_PART"
+            EXPIRY_EPOCH=$(date -d "$DAY $MON $YEAR $TIME_PART" +%s 2>/dev/null || true)
+            if [ -n "$EXPIRY_EPOCH" ]; then
+              NOW_EPOCH=$(date +%s)
+              if [ "$NOW_EPOCH" -gt "$EXPIRY_EPOCH" ]; then
+                echo "Coverity license expired on ${EXPIRY_DATE}"
+                note="Task $(context.task.name) failed: Coverity license expired on ${EXPIRY_DATE}"
+                TEST_OUTPUT=$(make_result_json -r FAILURE -t "$note" -f 1)
+                echo -n "failed" | tee "$(results.STATUS.path)"
+                echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
+                exit 0
+              fi
+              DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+              if [ "$DAYS_LEFT" -lt 14 ]; then
+                echo "WARNING: Coverity license expires in ${DAYS_LEFT} days (${EXPIRY_DATE})"
+              else
+                echo "Coverity license valid until: ${EXPIRY_DATE}"
+              fi
+            fi
+          fi
         else
           echo 'No license file for Coverity was detected. Coverity scan will not be executed...'
           echo 'Please, create a secret called 'cov-license' with a key called 'cov-license' and the value containing the Coverity license'
