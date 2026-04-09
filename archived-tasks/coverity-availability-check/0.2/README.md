@@ -1,5 +1,7 @@
 # coverity-availability-check task
 
+> **Deprecated**: This version of the task is deprecated. Please remove it from your pipeline. Deprecation date: 2026-04-09
+
 This task performs needed checks in order to use Coverity image in the pipeline. It will check for a Coverity license secret and an authentication secret for pulling the image.
 
 ## Parameters

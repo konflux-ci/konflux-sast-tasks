@@ -1,5 +1,7 @@
 # sast-coverity-check task
 
+> **Deprecated**: This version of the task is deprecated. Please remove it from your pipeline. Deprecation date: 2026-04-09
+
 Scans source code for security vulnerabilities, including common issues such as SQL injection, cross-site scripting (XSS), and code injection attacks using Coverity.
 
 ## Parameters
