@@ -8,10 +8,20 @@
   path: /metadata/labels/app.kubernetes.io~1version
   value: "0.3"
 
+- op: add
+  path: /metadata/annotations/build.appstudio.redhat.com~1expires-on
+  value: "2026-04-09T00:00:00Z"
+
+- op: add
+  path: /metadata/annotations/build.appstudio.redhat.com~1expiry-message
+  value: The sast-coverity-check task is now deprecated. Please remove this task from your pipeline.
+
 # Task description
 - op: replace
   path: /spec/description
   value: |-
+    > **Deprecated**: This version of the task is deprecated. Please remove it from your pipeline. Deprecation date: 2026-04-09
+
     Scans source code for security vulnerabilities, including common issues such as SQL injection, cross-site scripting (XSS), and code injection attacks using Coverity.
 
 # IMAGE param description
