@@ -15,3 +15,9 @@ echo "Creating snyk secret in namespace: $2"
 kubectl create secret generic snyk-secret \
     --from-literal=snyk_token="$SNYK_TOKEN" \
     --namespace="$2" || true
+
+# Create a secret with an invalid token to test retry on exit code 2
+echo "Creating snyk-bad-token secret in namespace: $2"
+kubectl create secret generic snyk-bad-token \
+    --from-literal=snyk_token="invalid-token" \
+    --namespace="$2" || true
