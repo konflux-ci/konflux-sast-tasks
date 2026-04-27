@@ -44,6 +44,11 @@ spec:
       description: The Trusted Artifact URI pointing to the artifact with
         the application source code.
       type: string
+    - name: TARGET_DIRS
+      description: Target directories in component's source code. Multiple
+        values should be separated with commas.
+      type: string
+      default: .
     - name: caTrustConfigMapKey
       description: The name of the key in the ConfigMap that contains the
         CA bundle data.
@@ -109,6 +114,8 @@ spec:
           value: $(params.FIND_UNICODE_CONTROL_ARGS)
         - name: RECORD_EXCLUDED
           value: $(params.RECORD_EXCLUDED)
+        - name: TARGET_DIRS
+          value: $(params.TARGET_DIRS)
         - name: SOURCE_CODE_DIR
           value: /var/workdir
         - name: COMPONENT_LABEL
@@ -143,8 +150,17 @@ spec:
         SCAN_PROP="https://github.com/siddhesh/find-unicode-control.git#c2accbfbba7553a8bc1ebd97089ae08ad8347e58"
         FUC_EXIT_CODE=0
 
+        # generate full path for each dirname separated by comma
+        declare -a ALL_TARGETS
+        OLD_IFS="$IFS"
+        IFS=","
+        for d in $TARGET_DIRS; do
+          ALL_TARGETS+=("${SOURCE_CODE_DIR}/source/${d}")
+        done
+        IFS="$OLD_IFS"
+
         # shellcheck disable=SC2086
-        LANG=en_US.utf8 find_unicode_control.py ${FIND_UNICODE_CONTROL_ARGS} "${SOURCE_CODE_DIR}/source" \
+        LANG=en_US.utf8 find_unicode_control.py ${FIND_UNICODE_CONTROL_ARGS} "${ALL_TARGETS[@]}" \
           >raw_sast_unicode_check_out.txt \
           2>raw_sast_unicode_check_out.log ||
           FUC_EXIT_CODE=$?
