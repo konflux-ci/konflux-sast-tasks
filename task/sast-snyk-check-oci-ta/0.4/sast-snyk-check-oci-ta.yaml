@@ -64,6 +64,20 @@ spec:
       description: The Trusted Artifact URI pointing to the artifact with
         the application source code.
       type: string
+    - name: SCAN_INPUT_MODE
+      description: |
+        Select scan input source.
+        - source-artifact: scan files restored from SOURCE_ARTIFACT (default)
+        - image-ref-scripts: if image-url/image-digest reference an OCI artifact (not a standard container image),
+          fetch only script-like blobs listed in manifest annotations and scan those files
+      type: string
+      default: source-artifact
+    - name: SCRIPT_PATH_REGEX
+      description: |
+        Extended regular expression for selecting script-like paths from OCI manifest annotation
+        org.opencontainers.image.title when SCAN_INPUT_MODE=image-ref-scripts.
+      type: string
+      default: '(^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$'
     - name: TARGET_DIRS
       description: Target directories in component's source code. Multiple
         values should be separated with commas.
@@ -122,6 +136,86 @@ spec:
           memory: 4Gi
         requests:
           memory: 4Gi
+    - name: prepare-scan-input-from-image
+      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
+      workingDir: /var/workdir
+      volumeMounts:
+        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+          name: trusted-ca
+          readOnly: true
+          subPath: ca-bundle.crt
+      env:
+        - name: SCAN_INPUT_MODE
+          value: $(params.SCAN_INPUT_MODE)
+        - name: SCRIPT_PATH_REGEX
+          value: $(params.SCRIPT_PATH_REGEX)
+        - name: IMAGE_URL
+          value: $(params.image-url)
+        - name: IMAGE_DIGEST
+          value: $(params.image-digest)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        if [[ "${SCAN_INPUT_MODE}" != "image-ref-scripts" ]]; then
+          echo "INFO: SCAN_INPUT_MODE=${SCAN_INPUT_MODE}, using SOURCE_ARTIFACT input"
+          exit 0
+        fi
+
+        if [[ -z "${IMAGE_URL}" || -z "${IMAGE_DIGEST}" ]]; then
+          echo "INFO: image-url/image-digest missing, cannot fetch scan input from image reference"
+          exit 0
+        fi
+
+        IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
+        echo "INFO: Preparing scan input from OCI reference ${IMAGE_REF}"
+
+        select-oci-auth "${IMAGE_URL}" >"${HOME}/auth.json"
+        oras manifest fetch --registry-config "${HOME}/auth.json" "${IMAGE_REF}" >"/tmp/manifest.json"
+
+        config_media_type="$(jq -r '.config.mediaType // ""' /tmp/manifest.json)"
+        if [[ "${config_media_type}" == "application/vnd.oci.image.config.v1+json" ]] || [[ "${config_media_type}" == "application/vnd.docker.container.image.v1+json" ]]; then
+          echo "INFO: Reference points to a container image config (${config_media_type}); keeping SOURCE_ARTIFACT input"
+          exit 0
+        fi
+
+        rm -rf /var/workdir/source
+        mkdir -p /var/workdir/source
+        fetched_files_manifest="/var/workdir/fetched-script-files.txt"
+        : >"${fetched_files_manifest}"
+
+        fetched_count=0
+        while IFS=$'\t' read -r digest rel_path; do
+          [[ -n "${rel_path}" ]] || continue
+          if ! printf '%s\n' "${rel_path}" | grep -Eq "${SCRIPT_PATH_REGEX}"; then
+            continue
+          fi
+
+          dest_path="/var/workdir/source/${rel_path}"
+          resolved_dest="$(realpath -m "${dest_path}")"
+          if [[ ! "${resolved_dest}" == /var/workdir/source/* ]]; then
+            echo "WARN: Skipping path outside source root: ${rel_path}"
+            continue
+          fi
+
+          mkdir -p "$(dirname "${resolved_dest}")"
+          echo "INFO: Fetching script blob ${digest} -> ${rel_path}"
+          oras blob fetch --registry-config "${HOME}/auth.json" "${IMAGE_URL}@${digest}" --output "${resolved_dest}"
+          echo "${resolved_dest}" >>"${fetched_files_manifest}"
+          fetched_count=$((fetched_count + 1))
+        done < <(jq -r '.layers[] | [.digest, (.annotations["org.opencontainers.image.title"] // "")] | @tsv' /tmp/manifest.json)
+
+        if [[ "${fetched_count}" -eq 0 ]]; then
+          echo "INFO: No script-like files matched SCRIPT_PATH_REGEX; source directory will remain empty"
+        else
+          echo "INFO: Prepared ${fetched_count} script-like files from OCI artifact manifest"
+        fi
+      computeResources:
+        limits:
+          memory: 2Gi
+        requests:
+          cpu: 100m
+          memory: 512Mi
     - name: sast-snyk-check
       image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
       workingDir: /var/workdir/source
@@ -157,6 +251,8 @@ spec:
               fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
         - name: TARGET_DIRS
           value: $(params.TARGET_DIRS)
+        - name: SCAN_INPUT_MODE
+          value: $(params.SCAN_INPUT_MODE)
       script: |
         #!/usr/bin/env bash
 
@@ -248,6 +344,16 @@ spec:
           RETRY_INTERVAL=30 retry _snyk_code_test $ARGS "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json"
 
         done
+
+        # For image-ref-scripts mode, remove fetched source files after scan to reduce pod disk usage.
+        if [[ "${SCAN_INPUT_MODE}" == "image-ref-scripts" ]] && [[ -f "/var/workdir/fetched-script-files.txt" ]]; then
+          while IFS= read -r fetched_file; do
+            [[ -n "${fetched_file}" ]] || continue
+            if [[ -f "${fetched_file}" ]]; then
+              rm -f "${fetched_file}"
+            fi
+          done </var/workdir/fetched-script-files.txt
+        fi
 
         # Merge all SARIF outputs
         find "$SOURCE_CODE_DIR" -name "sast_snyk_check_out_*.json" -exec cat {} + >"${SOURCE_CODE_DIR}/sast_snyk_check_out.json"

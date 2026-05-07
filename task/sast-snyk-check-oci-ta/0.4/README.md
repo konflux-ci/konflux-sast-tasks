@@ -18,8 +18,10 @@ See https://snyk.io/product/snyk-code/ and https://snyk.io/ for more information
 |KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 |PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
 |RECORD_EXCLUDED|Write excluded records in file. Useful for auditing (defaults to false).|false|false|
+|SCAN_INPUT_MODE|Select scan input source. Use `source-artifact` (default) to scan restored `SOURCE_ARTIFACT`, or `image-ref-scripts` to fetch script-like files from `image-url@image-digest` OCI artifact manifest and scan only those files.|source-artifact|false|
 |SNYK_SECRET|Name of secret which contains Snyk token.|snyk-secret|false|
 |SOURCE_ARTIFACT|The Trusted Artifact URI pointing to the artifact with the application source code.||true|
+|SCRIPT_PATH_REGEX|Extended regular expression used when `SCAN_INPUT_MODE=image-ref-scripts` to select file paths from OCI manifest `org.opencontainers.image.title` annotations.|(^|/)(Dockerfile\|Containerfile\|[^/]+\.(sh\|bash\|zsh\|ksh\|py\|rb\|pl\|js\|mjs\|cjs\|ts\|ps1))$|false|
 |TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas.|.|false|
 |caTrustConfigMapKey|The name of the key in the ConfigMap that contains the CA bundle data.|ca-bundle.crt|false|
 |caTrustConfigMapName|The name of the ConfigMap to read CA bundle data from.|trusted-ca|false|
