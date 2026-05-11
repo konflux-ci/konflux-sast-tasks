@@ -57,6 +57,18 @@ spec:
         to false).
       type: string
       default: "false"
+    - name: SCAN_INPUT_MODE
+      description: When set to image-ref-scripts, fetch script-like files
+        from image-url@image-digest (OCI artifact manifest) into /var/workdir/source
+        before the main scan step. Requires use-source. Default source-artifact
+        uses only restored SOURCE_ARTIFACT.
+      type: string
+      default: source-artifact
+    - name: SCRIPT_PATH_REGEX
+      description: Extended regex matching org.opencontainers.image.title
+        paths in the OCI manifest when SCAN_INPUT_MODE=image-ref-scripts.
+      type: string
+      default: (^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$
     - name: SNYK_SECRET
       description: Name of secret which contains Snyk token.
       default: snyk-secret
@@ -64,20 +76,6 @@ spec:
       description: The Trusted Artifact URI pointing to the artifact with
         the application source code.
       type: string
-    - name: SCAN_INPUT_MODE
-      description: |
-        Select scan input source.
-        - source-artifact: scan files restored from SOURCE_ARTIFACT (default)
-        - image-ref-scripts: if image-url/image-digest reference an OCI artifact (not a standard container image),
-          fetch only script-like blobs listed in manifest annotations and scan those files
-      type: string
-      default: source-artifact
-    - name: SCRIPT_PATH_REGEX
-      description: |
-        Extended regular expression for selecting script-like paths from OCI manifest annotation
-        org.opencontainers.image.title when SCAN_INPUT_MODE=image-ref-scripts.
-      type: string
-      default: '(^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$'
     - name: TARGET_DIRS
       description: Target directories in component's source code. Multiple
         values should be separated with commas.
@@ -251,8 +249,6 @@ spec:
               fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
         - name: TARGET_DIRS
           value: $(params.TARGET_DIRS)
-        - name: SCAN_INPUT_MODE
-          value: $(params.SCAN_INPUT_MODE)
       script: |
         #!/usr/bin/env bash
 
@@ -344,16 +340,6 @@ spec:
           RETRY_INTERVAL=30 retry _snyk_code_test $ARGS "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json"
 
         done
-
-        # For image-ref-scripts mode, remove fetched source files after scan to reduce pod disk usage.
-        if [[ "${SCAN_INPUT_MODE}" == "image-ref-scripts" ]] && [[ -f "/var/workdir/fetched-script-files.txt" ]]; then
-          while IFS= read -r fetched_file; do
-            [[ -n "${fetched_file}" ]] || continue
-            if [[ -f "${fetched_file}" ]]; then
-              rm -f "${fetched_file}"
-            fi
-          done </var/workdir/fetched-script-files.txt
-        fi
 
         # Merge all SARIF outputs
         find "$SOURCE_CODE_DIR" -name "sast_snyk_check_out_*.json" -exec cat {} + >"${SOURCE_CODE_DIR}/sast_snyk_check_out.json"
@@ -505,6 +491,39 @@ spec:
         requests:
           cpu: "1"
           memory: 6Gi
+    - name: cleanup-scan-input-from-image
+      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
+      workingDir: /var/workdir
+      volumeMounts:
+        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+          name: trusted-ca
+          readOnly: true
+          subPath: ca-bundle.crt
+      env:
+        - name: SCAN_INPUT_MODE
+          value: $(params.SCAN_INPUT_MODE)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        if [[ "${SCAN_INPUT_MODE}" != "image-ref-scripts" ]]; then
+          exit 0
+        fi
+        if [[ ! -f /var/workdir/fetched-script-files.txt ]]; then
+          exit 0
+        fi
+        while IFS= read -r f; do
+          [[ -n "${f}" ]] || continue
+          if [[ -f "${f}" ]]; then
+            rm -f "${f}"
+          fi
+        done </var/workdir/fetched-script-files.txt
+        rm -f /var/workdir/fetched-script-files.txt
+      computeResources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 128Mi
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
       workingDir: /var/workdir/source
