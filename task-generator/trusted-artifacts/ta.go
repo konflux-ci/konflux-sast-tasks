@@ -375,7 +375,11 @@ func perform(task *pipeline.Task, recipe *Recipe) error {
 	}
 
 	for _, additional := range recipe.AdditionalSteps {
-		task.Spec.Steps = slices.Insert(task.Spec.Steps, additional.At, additional.Step)
+		step := additional.Step
+		if step.Image == "build-trusted-artifacts" {
+			step.Image = image
+		}
+		task.Spec.Steps = slices.Insert(task.Spec.Steps, additional.At, step)
 	}
 
 	return nil

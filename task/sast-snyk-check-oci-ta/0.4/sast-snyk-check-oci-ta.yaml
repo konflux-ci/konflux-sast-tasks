@@ -27,6 +27,17 @@ spec:
         the prefetched dependencies.
       type: string
       default: ""
+    - name: EXTRA_ARTIFACT_FILTER
+      description: Extended regex matching org.opencontainers.image.title
+        paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
+      type: string
+      default: (^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$
+    - name: FETCH_EXTRA_ARTIFACTS
+      description: When "true", fetch script-like files from image-url@image-digest
+        (OCI artifact manifest) into /var/workdir/source alongside the restored
+        SOURCE_ARTIFACT. Skipped for standard container images.
+      type: string
+      default: "false"
     - name: IGNORE_FILE_PATHS
       description: Directories or files to be excluded from Snyk scan (Comma-separated).
         Useful to split the directories of a git repo across multiple components.
@@ -57,18 +68,6 @@ spec:
         to false).
       type: string
       default: "false"
-    - name: SCAN_INPUT_MODE
-      description: When set to image-ref-scripts, fetch script-like files
-        from image-url@image-digest (OCI artifact manifest) into /var/workdir/source
-        before the main scan step. Requires use-source. Default source-artifact
-        uses only restored SOURCE_ARTIFACT.
-      type: string
-      default: source-artifact
-    - name: SCRIPT_PATH_REGEX
-      description: Extended regex matching org.opencontainers.image.title
-        paths in the OCI manifest when SCAN_INPUT_MODE=image-ref-scripts.
-      type: string
-      default: (^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$
     - name: SNYK_SECRET
       description: Name of secret which contains Snyk token.
       default: snyk-secret
@@ -119,7 +118,7 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d6d6048bdb5a73697ff88734a3f33c54193405b901d3f5192b8251a878623906
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:a246cf2267fe6fa68ae8885c6ca4141923edca3ccf9b56838d1ebe369d31b46d
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
@@ -134,8 +133,8 @@ spec:
           memory: 4Gi
         requests:
           memory: 4Gi
-    - name: prepare-scan-input-from-image
-      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
+    - name: fetch-extra-artifacts
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:a246cf2267fe6fa68ae8885c6ca4141923edca3ccf9b56838d1ebe369d31b46d
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
@@ -143,49 +142,53 @@ spec:
           readOnly: true
           subPath: ca-bundle.crt
       env:
-        - name: SCAN_INPUT_MODE
-          value: $(params.SCAN_INPUT_MODE)
-        - name: SCRIPT_PATH_REGEX
-          value: $(params.SCRIPT_PATH_REGEX)
+        - name: FETCH_EXTRA_ARTIFACTS
+          value: $(params.FETCH_EXTRA_ARTIFACTS)
+        - name: EXTRA_ARTIFACT_FILTER
+          value: $(params.EXTRA_ARTIFACT_FILTER)
         - name: IMAGE_URL
           value: $(params.image-url)
         - name: IMAGE_DIGEST
           value: $(params.image-digest)
+        - name: CA_FILE
+          value: /etc/pki/tls/certs/ca-custom-bundle.crt
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
 
-        if [[ "${SCAN_INPUT_MODE}" != "image-ref-scripts" ]]; then
-          echo "INFO: SCAN_INPUT_MODE=${SCAN_INPUT_MODE}, using SOURCE_ARTIFACT input"
+        if [[ "${FETCH_EXTRA_ARTIFACTS}" != "true" ]]; then
           exit 0
         fi
 
         if [[ -z "${IMAGE_URL}" || -z "${IMAGE_DIGEST}" ]]; then
-          echo "INFO: image-url/image-digest missing, cannot fetch scan input from image reference"
+          echo "INFO: image-url/image-digest missing, cannot fetch extra artifacts"
           exit 0
         fi
 
-        IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
-        echo "INFO: Preparing scan input from OCI reference ${IMAGE_REF}"
+        # shellcheck source=/dev/null
+        source /usr/local/bin/oras_opts.sh
 
-        select-oci-auth "${IMAGE_URL}" >"${HOME}/auth.json"
-        oras manifest fetch --registry-config "${HOME}/auth.json" "${IMAGE_REF}" >"/tmp/manifest.json"
+        IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
+        echo "INFO: Fetching extra artifacts from OCI reference ${IMAGE_REF}"
+
+        authfile="$(mktemp)"
+        trap 'rm -f "${authfile}"' EXIT
+        /usr/local/bin/select-oci-auth.sh "${IMAGE_URL}" >"${authfile}"
+
+        retry oras manifest fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_REF}" >"/tmp/manifest.json"
 
         config_media_type="$(jq -r '.config.mediaType // ""' /tmp/manifest.json)"
         if [[ "${config_media_type}" == "application/vnd.oci.image.config.v1+json" ]] || [[ "${config_media_type}" == "application/vnd.docker.container.image.v1+json" ]]; then
-          echo "INFO: Reference points to a container image config (${config_media_type}); keeping SOURCE_ARTIFACT input"
+          echo "INFO: Reference points to a container image config (${config_media_type}); skipping extra artifact fetch"
           exit 0
         fi
 
-        rm -rf /var/workdir/source
         mkdir -p /var/workdir/source
-        fetched_files_manifest="/var/workdir/fetched-script-files.txt"
-        : >"${fetched_files_manifest}"
 
         fetched_count=0
         while IFS=$'\t' read -r digest rel_path; do
           [[ -n "${rel_path}" ]] || continue
-          if ! printf '%s\n' "${rel_path}" | grep -Eq "${SCRIPT_PATH_REGEX}"; then
+          if ! printf '%s\n' "${rel_path}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}"; then
             continue
           fi
 
@@ -197,16 +200,15 @@ spec:
           fi
 
           mkdir -p "$(dirname "${resolved_dest}")"
-          echo "INFO: Fetching script blob ${digest} -> ${rel_path}"
-          oras blob fetch --registry-config "${HOME}/auth.json" "${IMAGE_URL}@${digest}" --output "${resolved_dest}"
-          echo "${resolved_dest}" >>"${fetched_files_manifest}"
+          echo "INFO: Fetching blob ${digest} -> ${rel_path}"
+          retry oras blob fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${digest}" --output "${resolved_dest}"
           fetched_count=$((fetched_count + 1))
         done < <(jq -r '.layers[] | [.digest, (.annotations["org.opencontainers.image.title"] // "")] | @tsv' /tmp/manifest.json)
 
         if [[ "${fetched_count}" -eq 0 ]]; then
-          echo "INFO: No script-like files matched SCRIPT_PATH_REGEX; source directory will remain empty"
+          echo "INFO: No files matched EXTRA_ARTIFACT_FILTER"
         else
-          echo "INFO: Prepared ${fetched_count} script-like files from OCI artifact manifest"
+          echo "INFO: Fetched ${fetched_count} extra artifact file(s) alongside SOURCE_ARTIFACT"
         fi
       computeResources:
         limits:
@@ -491,39 +493,6 @@ spec:
         requests:
           cpu: "1"
           memory: 6Gi
-    - name: cleanup-scan-input-from-image
-      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
-      workingDir: /var/workdir
-      volumeMounts:
-        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
-          name: trusted-ca
-          readOnly: true
-          subPath: ca-bundle.crt
-      env:
-        - name: SCAN_INPUT_MODE
-          value: $(params.SCAN_INPUT_MODE)
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-        if [[ "${SCAN_INPUT_MODE}" != "image-ref-scripts" ]]; then
-          exit 0
-        fi
-        if [[ ! -f /var/workdir/fetched-script-files.txt ]]; then
-          exit 0
-        fi
-        while IFS= read -r f; do
-          [[ -n "${f}" ]] || continue
-          if [[ -f "${f}" ]]; then
-            rm -f "${f}"
-          fi
-        done </var/workdir/fetched-script-files.txt
-        rm -f /var/workdir/fetched-script-files.txt
-      computeResources:
-        limits:
-          memory: 256Mi
-        requests:
-          cpu: 50m
-          memory: 128Mi
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
       workingDir: /var/workdir/source
