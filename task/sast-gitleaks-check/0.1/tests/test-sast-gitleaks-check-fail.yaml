@@ -32,7 +32,7 @@ spec:
         - name: url
           value: https://github.com/konflux-ci/test-data-sast
         - name: revision
-          value: main
+          value: gitleaks
       taskRef:
         resolver: git
         params:
@@ -59,8 +59,8 @@ spec:
           value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
         - name: PROJECT_NAME
           value: test_proj
-        - name: TARGET_DIRS
-          value: .
+        # - name: TARGET_DIRS
+        #   value: .
     - name: check-result
       runAfter:
         - scan-with-gitleaks
@@ -89,4 +89,4 @@ spec:
               # result in a json with an empty array in it
               echo "$RESULTS"
               echo -n "Expected result: "
-              echo "$RESULTS" | jq -e '.result == "SUCCESS"'
+              echo "$RESULTS" | jq -e '.result == "FAILURE"'
