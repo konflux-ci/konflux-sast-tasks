@@ -280,7 +280,7 @@ spec:
           cpu: 100m
           memory: 4Gi
     - name: upload
-      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
+      image: quay.io/konflux-ci/oras:latest@sha256:8b903a6363812d3d24fcc9022deb44f00110b34f2d1bd33d348df5a41ef88425
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
