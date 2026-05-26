@@ -123,7 +123,7 @@ spec:
         requests:
           memory: 4Gi
     - name: sast-snyk-check
-      image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
+      image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /etc/secrets
