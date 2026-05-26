@@ -68,7 +68,7 @@ spec:
         optional: true
   steps:
     - name: sast-shell-check
-      image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
+      image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
       computeResources:
         limits:
           memory: 4Gi
@@ -245,7 +245,7 @@ spec:
         parse_test_output "$(context.task.name)" sarif shellcheck-results.sarif || true
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
     - name: upload
-      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
+      image: quay.io/konflux-ci/oras:latest@sha256:8b903a6363812d3d24fcc9022deb44f00110b34f2d1bd33d348df5a41ef88425
       computeResources:
         limits:
           memory: 256Mi
