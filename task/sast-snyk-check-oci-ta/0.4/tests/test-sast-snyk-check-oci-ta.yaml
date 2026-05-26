@@ -1,0 +1,105 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-snyk-check-oci-ta
+spec:
+  description: |
+    Test for sast-snyk-check-oci-ta. FETCH_EXTRA_ARTIFACTS is false, so
+    fetch-extra-artifacts exits without fetching script-like OCI artifacts. The Snyk
+    scan still runs against trusted source from git-clone-oci-ta.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: init
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/init/0.2/init.yaml
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+    - name: clone-repository
+      runAfter:
+        - init
+      params:
+        - name: url
+          value: https://github.com/konflux-ci/test-data-sast
+        - name: revision
+          value: main
+        - name: ociStorage
+          value: registry-service.kind-registry/sast-snyk-check-oci-ta-test:git
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/git-clone-oci-ta/0.1/git-clone-oci-ta.yaml
+    - name: prefetch-dependencies
+      runAfter:
+        - clone-repository
+      params:
+        - name: input
+          value: ""
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: ociStorage
+          value: registry-service.kind-registry/sast-snyk-check-oci-ta-test:prefetch
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/prefetch-dependencies-oci-ta/0.3/prefetch-dependencies-oci-ta.yaml
+    - name: scan-with-snyk
+      runAfter:
+        - prefetch-dependencies
+      taskRef:
+        name: sast-snyk-check-oci-ta
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: CACHI2_ARTIFACT
+          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+        - name: FETCH_EXTRA_ARTIFACTS
+          value: "false"
+        - name: image-url
+          # TODO add credentials for `oci-attach` so that upload can be tested
+          # for now, set this to empty string to force skipping of upload results step
+          value: ""
+        - name: image-digest
+          value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
+    - name: check-result
+      runAfter:
+        - scan-with-snyk
+      params:
+        - name: results
+          value: $(tasks.scan-with-snyk.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+          - name: results
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
+            env:
+            - name: RESULTS
+              value: $(params.results)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              echo "$RESULTS"
+              echo -n "Expected result: "
+              echo "$RESULTS" | jq -e '.result == "FAILURE" and .successes == 0 and .failures == 1 and .warnings == 0'
