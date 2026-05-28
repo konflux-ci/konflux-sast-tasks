@@ -70,7 +70,7 @@ spec:
           cpu: "1"
           memory: 6Gi
       image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
-      workingDir: $(workspaces.workspace.path)/source
+      workingDir: $(workspaces.workspace.path)
       volumeMounts:
         - name: trusted-ca
           mountPath: /mnt/trusted-ca
@@ -119,11 +119,10 @@ spec:
         # We do want to expand ARGS (it can be multiple CLI flags, not just one)
         # shellcheck disable=SC2086
 
-        gitleaks dir $TARGET_DIRS --verbose --report-format sarif --exit-code=3 --report-path "${SOURCE_CODE_DIR}/sast_gitleaks_check_out.json" 1>&2>> stdout.txt
+        cd ${SOURCE_CODE_DIR}
+        gitleaks dir $TARGET_DIRS --verbose --report-format sarif --exit-code=3 --report-path "sast_gitleaks_check_out.json" $GITLEAKS_ARGS 1>&2>> stdout.txt
         GITLEAKS_EXIT_CODE=$?
 
-        # Merge all SARIF outputs
-        # find "$SOURCE_CODE_DIR" -name "sast_gitleaks_check_out_*.json" -exec cat {} + > "${SOURCE_CODE_DIR}/sast_gitleaks_check_out.json"
         set -e
         test_not_skipped=0
         SKIP_MSG="We found 0 supported files"
@@ -156,13 +155,11 @@ spec:
             }' >"${SOURCE_CODE_DIR}/sast_gitleaks_check_out.json"
           fi
 
-          # In order to generate csdiff/v1, we need to add the whole path of the source code as Snyk only provides an URI to embed the context
-          (cd  "${SOURCE_CODE_DIR}" && csgrep --mode=json --embed-context=3 "${SOURCE_CODE_DIR}"/sast_gitleaks_check_out.json) \
-            | csgrep --mode=json --strip-path-prefix="source/"  \
-            > sast_gitleaks_check_out_all_findings.json
+          # Get context of leak
+          csgrep --mode=json --embed-context=3 "${SOURCE_CODE_DIR}"/sast_gitleaks_check_out.json > sast_gitleaks_check_out_all_findings.json
 
           echo "INFO: Initial results:"
-          csgrep --mode=evtstat sast_gitleaks_check_out_all_findings.json
+          csgrep --mode=grep sast_gitleaks_check_out_all_findings.json
 
           if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
             KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
@@ -221,7 +218,7 @@ spec:
 
         # When the test is skipped, the "GITLEAKS_EXIT_CODE" is 3 and it can also be 3 in some other situation
         elif [[ "$test_not_skipped" -eq 0 ]]; then
-          note="Task $(context.task.name) success: Snyk code test found zero supported files."
+          note="Task $(context.task.name) success: Gitleaks scan found zero supported files."
           ERROR_OUTPUT=$(make_result_json -r SUCCESS -t "$note")
         else
           echo "sast-gitleaks-check test failed because of the following issues:"
@@ -238,7 +235,7 @@ spec:
           cpu: 100m
           memory: 256Mi
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
-      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
+      workingDir: $(workspaces.workspace.path)
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca

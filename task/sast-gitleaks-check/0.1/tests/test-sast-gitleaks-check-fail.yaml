@@ -32,7 +32,7 @@ spec:
         - name: url
           value: https://github.com/konflux-ci/test-data-sast
         - name: revision
-          value: gitleaks
+          value: main
       taskRef:
         resolver: git
         params:
@@ -52,15 +52,11 @@ spec:
         name: sast-gitleaks-check
       params:
         - name: image-url
-          # TODO add credentials for `oci-attach` so that upload can be tested
-          # for now, set this to empty string to force skipping of upload results step
           value: ""
         - name: image-digest
           value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
         - name: PROJECT_NAME
           value: test_proj
-        # - name: TARGET_DIRS
-        #   value: .
     - name: check-result
       runAfter:
         - scan-with-gitleaks
@@ -89,4 +85,4 @@ spec:
               # result in a json with an empty array in it
               echo "$RESULTS"
               echo -n "Expected result: "
-              echo "$RESULTS" | jq -e '.result == "FAILURE"'
+              echo "$RESULTS" | jq -e '.result == "FAILURE" and .successes == 0 and .failures == 1 and .warnings == 0'
