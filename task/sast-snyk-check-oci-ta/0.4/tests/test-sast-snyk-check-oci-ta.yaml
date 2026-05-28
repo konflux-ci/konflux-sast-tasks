@@ -43,35 +43,14 @@ spec:
             value: main
           - name: pathInRepo
             value: task/git-clone-oci-ta/0.1/git-clone-oci-ta.yaml
-    - name: prefetch-dependencies
-      runAfter:
-        - clone-repository
-      params:
-        - name: input
-          value: ""
-        - name: SOURCE_ARTIFACT
-          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
-        - name: ociStorage
-          value: registry-service.kind-registry/sast-snyk-check-oci-ta-test:prefetch
-      taskRef:
-        resolver: git
-        params:
-          - name: url
-            value: https://github.com/konflux-ci/build-definitions.git
-          - name: revision
-            value: main
-          - name: pathInRepo
-            value: task/prefetch-dependencies-oci-ta/0.3/prefetch-dependencies-oci-ta.yaml
     - name: scan-with-snyk
       runAfter:
-        - prefetch-dependencies
+        - clone-repository
       taskRef:
         name: sast-snyk-check-oci-ta
       params:
         - name: SOURCE_ARTIFACT
-          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-        - name: CACHI2_ARTIFACT
-          value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: FETCH_EXTRA_ARTIFACTS
           value: "false"
         - name: image-url

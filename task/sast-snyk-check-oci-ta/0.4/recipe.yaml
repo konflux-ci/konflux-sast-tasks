@@ -56,6 +56,7 @@ additionalSteps:
       fi
 
       # shellcheck source=/dev/null
+      declare -a oras_opts=()
       source /usr/local/bin/oras_opts.sh
 
       IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
