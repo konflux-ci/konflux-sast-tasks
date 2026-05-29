@@ -120,7 +120,7 @@ spec:
         # shellcheck disable=SC2086
 
         cd ${SOURCE_CODE_DIR}
-        gitleaks dir $TARGET_DIRS --verbose --report-format sarif --exit-code=3 --report-path "sast_gitleaks_check_out.json" $GITLEAKS_ARGS 1>&2>> stdout.txt
+        gitleaks dir "$TARGET_DIRS" --verbose --report-format sarif --exit-code=3 --report-path "sast_gitleaks_check_out.json" "$GITLEAKS_ARGS" 1>&2>> stdout.txt
         GITLEAKS_EXIT_CODE=$?
 
         set -e
