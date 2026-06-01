@@ -1,0 +1,68 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-snyk-check-retry
+spec:
+  description: |
+    Test that sast-snyk-check retries on exit code 2 (e.g. bad token / network error)
+    and reports ERROR after exhausting retries.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: clone-repository
+      workspaces:
+        - name: output
+          workspace: tests-workspace
+      params:
+        - name: url
+          value: https://github.com/konflux-ci/test-data-sast
+        - name: revision
+          value: main
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/git-clone/0.1/git-clone.yaml
+    - name: scan-with-snyk
+      runAfter:
+        - clone-repository
+      workspaces:
+        - name: workspace
+          workspace: tests-workspace
+      taskRef:
+        name: sast-snyk-check
+      params:
+        - name: SNYK_SECRET
+          value: snyk-bad-token
+        - name: image-url
+          value: ""
+        - name: image-digest
+          value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
+    - name: check-result
+      runAfter:
+        - scan-with-snyk
+      params:
+        - name: results
+          value: $(tasks.scan-with-snyk.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+          - name: results
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
+            env:
+            - name: RESULTS
+              value: $(params.results)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              echo "$RESULTS"
+              echo -n "Expected ERROR result after retry exhaustion: "
+              echo "$RESULTS" | jq -e '.result == "ERROR"'
