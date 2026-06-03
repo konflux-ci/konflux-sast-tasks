@@ -142,10 +142,6 @@ spec:
 
         echo "INFO: The PROJECT_NAME used is: ${PROJECT_NAME}"
 
-        if [[ "${ARGS}" != *"--project-name"* ]]; then
-          ARGS="$ARGS --project-name=${PROJECT_NAME}"
-        fi
-
         # Installation of Red Hat certificates for cloning Red Hat internal repositories
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
         if [ -f "$ca_bundle" ]; then
