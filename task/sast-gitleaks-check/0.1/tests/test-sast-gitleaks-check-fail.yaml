@@ -1,0 +1,88 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-gitleaks-check
+spec:
+  description: |
+    Test the sast-gitleaks-check task is runs successfully
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: init
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/init/0.2/init.yaml
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+    - name: clone-repository
+      runAfter:
+        - init
+      workspaces:
+        - name: output
+          workspace: tests-workspace
+      params:
+        - name: url
+          value: https://github.com/konflux-ci/test-data-sast
+        - name: revision
+          value: main
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/git-clone/0.1/git-clone.yaml
+    - name: scan-with-gitleaks
+      runAfter:
+        - clone-repository
+      workspaces:
+        - name: workspace
+          workspace: tests-workspace
+      taskRef:
+        name: sast-gitleaks-check
+      params:
+        - name: image-url
+          value: ""
+        - name: image-digest
+          value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
+        - name: PROJECT_NAME
+          value: test_proj
+    - name: check-result
+      runAfter:
+        - scan-with-gitleaks
+      workspaces:
+        - name: workspace
+          workspace: tests-workspace
+      params:
+        - name: results
+          value: $(tasks.scan-with-gitleaks.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+          - name: results
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
+            workingDir: $(workspaces.workspace.path)
+            env:
+            - name: RESULTS
+              value: $(params.results)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              # Running gitleaks on a repo with no leaks should
+              # result in a json with an empty array in it
+              echo "$RESULTS"
+              echo -n "Expected result: "
+              echo "$RESULTS" | jq -e '.result == "FAILURE" and .successes == 0 and .failures == 1 and .warnings == 0'
