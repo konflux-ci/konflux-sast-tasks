@@ -6,4 +6,4 @@ Version 0.5:
 - If `--project-name` is already included in `ARGS`, there is no change in behavior.
 ## Change in behaviors
 - The scan results from users may appear in new locations since the `--project-name` will now be used even if no ARG provided
--- Default value is the Konflux `COMPONENT_LABEL`
+-- Default value of `--project-name` is the value of the `PROJECT_NAME` parameter, which if unset, defaults to the name of the Konflux component (`appstudio.openshift.io/component` label).
