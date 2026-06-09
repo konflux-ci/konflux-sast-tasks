@@ -9,7 +9,9 @@ metadata:
   name: sast-gitleaks-check
 spec:
   description: |-
-    gitleaks task
+    Scans source code for exposed secrets, ensuring keys, passwords, and tokens aren't leaked in repositories.
+
+    See https://github.com/gitleaks/gitleaks for more information on how to use Gitleaks.
   results:
     - description: Tekton task test output.
       name: TEST_OUTPUT
