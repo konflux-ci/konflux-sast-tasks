@@ -13,6 +13,7 @@ ShellCheck is a static analysis tool, gives warnings and suggestions for bash/sh
 |RECORD_EXCLUDED|Whether to record the excluded findings (default to false). If `true`, the excluded findings will be stored in `excluded-findings.json`. |false|false|
 |IMP_FINDINGS_ONLY|Whether to include important findings only|true|false|
 |TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas.|.|false|
+|SKIP_JINJA|Whether to skip files containing Jinja2 template syntax. ShellCheck cannot parse Jinja2 constructs, so scanning such files produces unreliable findings.|true|false|
 |caTrustConfigMapName|The name of the ConfigMap to read CA bundle data from.|trusted-ca|false|
 |caTrustConfigMapKey|The name of the key in the ConfigMap that contains the CA bundle data.|ca-bundle.crt|false|
 
