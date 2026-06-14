@@ -1,13 +1,12 @@
----
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: sast-snyk-check-oci-ta
-  annotations:
-    tekton.dev/pipelines.minVersion: 0.12.1
-    tekton.dev/tags: konflux
   labels:
-    app.kubernetes.io/version: "0.4"
+    app.kubernetes.io/version: "0.5"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: "konflux"
+  name: sast-snyk-check
 spec:
   description: |-
     Scans source code for security vulnerabilities, including common issues such as SQL injection, cross-site scripting (XSS), and code injection attacks using Snyk Code, a Static Application Security Testing (SAST) tool.
@@ -17,215 +16,92 @@ spec:
     The snyk binary used in this Task comes from a container image defined in https://github.com/konflux-ci/konflux-test
 
     See https://snyk.io/product/snyk-code/ and https://snyk.io/ for more information about the snyk tool.
+  results:
+    - description: Tekton task test output.
+      name: TEST_OUTPUT
   params:
-    - name: ARGS
-      description: Append arguments.
-      type: string
-      default: ""
-    - name: CACHI2_ARTIFACT
-      description: The Trusted Artifact URI pointing to the artifact with
-        the prefetched dependencies.
-      type: string
-      default: ""
-    - name: EXTRA_ARTIFACT_FILTER
-      description: Extended regex matching org.opencontainers.image.title
-        paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
-      type: string
-      default: (^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$
-    - name: FETCH_EXTRA_ARTIFACTS
-      description: When "true", fetch script-like files from image-url@image-digest
-        (OCI artifact manifest) into /var/workdir/source alongside the restored
-        SOURCE_ARTIFACT. Skipped for standard container images.
-      type: string
-      default: "false"
-    - name: IGNORE_FILE_PATHS
-      description: Directories or files to be excluded from Snyk scan (Comma-separated).
-        Useful to split the directories of a git repo across multiple components.
-      type: string
-      default: ""
-    - name: IMP_FINDINGS_ONLY
-      description: Report only important findings in task result. Default
-        is "true". To report all findings in task result, specify "false".
-        Uploaded SARIF report to remote registry always includes all findings,
-        regardless of severity level.
-      type: string
-      default: "true"
-    - name: KFP_GIT_URL
-      description: Known False Positives (KFP) git URL (optionally taking
-        a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
-        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git"
-        for internal Konflux instance and empty string for external Konflux
-        instance. If set to an empty string, the KFP filtering is disabled.
-      type: string
-      default: SITE_DEFAULT
-    - name: PROJECT_NAME
-      description: Name of the scanned project, used to find path exclusions.
-        By default, the Konflux component name will be used.
-      type: string
-      default: ""
-    - name: RECORD_EXCLUDED
-      description: Write excluded records in file. Useful for auditing (defaults
-        to false).
-      type: string
-      default: "false"
     - name: SNYK_SECRET
       description: Name of secret which contains Snyk token.
       default: snyk-secret
-    - name: SOURCE_ARTIFACT
-      description: The Trusted Artifact URI pointing to the artifact with
-        the application source code.
+    - name: ARGS
       type: string
-    - name: TARGET_DIRS
-      description: Target directories in component's source code. Multiple
-        values should be separated with commas.
+      description: Append arguments.
+      default: ""
+    - description: Image URL.
+      name: image-url
       type: string
-      default: .
-    - name: caTrustConfigMapKey
-      description: The name of the key in the ConfigMap that contains the
-        CA bundle data.
-      type: string
-      default: ca-bundle.crt
-    - name: caTrustConfigMapName
-      description: The name of the ConfigMap to read CA bundle data from.
-      type: string
-      default: trusted-ca
     - name: image-digest
       description: Digest of the image to scan.
       type: string
-    - name: image-url
-      description: Image URL.
+    - name: caTrustConfigMapName
       type: string
-  results:
-    - name: TEST_OUTPUT
-      description: Tekton task test output.
+      description: The name of the ConfigMap to read CA bundle data from.
+      default: trusted-ca
+    - name: caTrustConfigMapKey
+      type: string
+      description: The name of the key in the ConfigMap that contains the CA bundle data.
+      default: ca-bundle.crt
+    - name: IMP_FINDINGS_ONLY
+      type: string
+      description: Report only important findings in task result. Default is "true".
+        To report all findings in task result, specify "false". Uploaded SARIF report to remote registry
+        always includes all findings, regardless of severity level.
+      default: "true"
+    - name: KFP_GIT_URL
+      type: string
+      description: Known False Positives (KFP) git URL (optionally taking
+        a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
+        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux
+        instance and empty string for external Konflux instance.
+        If set to an empty string, the KFP filtering is disabled.
+
+      default: "SITE_DEFAULT"
+    - name: PROJECT_NAME
+      type: string
+      description: Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.
+      default: ""
+    - name: RECORD_EXCLUDED
+      type: string
+      description: Write excluded records in file. Useful for auditing (defaults to false).
+      default: "false"
+    - name: IGNORE_FILE_PATHS
+      type: string
+      description: Directories or files to be excluded from Snyk scan (Comma-separated). Useful to split the directories of a git repo across multiple components.
+      default: ""
+    - name: TARGET_DIRS
+      description: Target directories in component's source code. Multiple values should be separated with commas.
+      type: string
+      default: "."
   volumes:
     - name: snyk-secret
       secret:
-        optional: true
         secretName: $(params.SNYK_SECRET)
+        optional: true
     - name: trusted-ca
       configMap:
+        name: $(params.caTrustConfigMapName)
         items:
           - key: $(params.caTrustConfigMapKey)
             path: ca-bundle.crt
-        name: $(params.caTrustConfigMapName)
         optional: true
-    - name: workdir
-      emptyDir: {}
-  stepTemplate:
-    volumeMounts:
-      - mountPath: /var/workdir
-        name: workdir
   steps:
-    - name: use-trusted-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:a246cf2267fe6fa68ae8885c6ca4141923edca3ccf9b56838d1ebe369d31b46d
-      args:
-        - use
-        - $(params.SOURCE_ARTIFACT)=/var/workdir/source
-        - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
-      volumeMounts:
-        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
-          name: trusted-ca
-          readOnly: true
-          subPath: ca-bundle.crt
-      computeResources:
-        limits:
-          memory: 4Gi
-        requests:
-          memory: 4Gi
-    - name: fetch-extra-artifacts
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:a246cf2267fe6fa68ae8885c6ca4141923edca3ccf9b56838d1ebe369d31b46d
-      workingDir: /var/workdir
-      volumeMounts:
-        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
-          name: trusted-ca
-          readOnly: true
-          subPath: ca-bundle.crt
-      env:
-        - name: FETCH_EXTRA_ARTIFACTS
-          value: $(params.FETCH_EXTRA_ARTIFACTS)
-        - name: EXTRA_ARTIFACT_FILTER
-          value: $(params.EXTRA_ARTIFACT_FILTER)
-        - name: IMAGE_URL
-          value: $(params.image-url)
-        - name: IMAGE_DIGEST
-          value: $(params.image-digest)
-        - name: CA_FILE
-          value: /etc/pki/tls/certs/ca-custom-bundle.crt
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-
-        if [[ "${FETCH_EXTRA_ARTIFACTS}" != "true" ]]; then
-          exit 0
-        fi
-
-        if [[ -z "${IMAGE_URL}" || -z "${IMAGE_DIGEST}" ]]; then
-          echo "INFO: image-url/image-digest missing, cannot fetch extra artifacts"
-          exit 0
-        fi
-
-        # shellcheck source=/dev/null
-        declare -a oras_opts=()
-        source /usr/local/bin/oras_opts.sh
-
-        IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
-        echo "INFO: Fetching extra artifacts from OCI reference ${IMAGE_REF}"
-
-        authfile="$(mktemp)"
-        trap 'rm -f "${authfile}"' EXIT
-        /usr/local/bin/select-oci-auth.sh "${IMAGE_URL}" >"${authfile}"
-
-        retry oras manifest fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_REF}" >"/tmp/manifest.json"
-
-        config_media_type="$(jq -r '.config.mediaType // ""' /tmp/manifest.json)"
-        if [[ "${config_media_type}" == "application/vnd.oci.image.config.v1+json" ]] || [[ "${config_media_type}" == "application/vnd.docker.container.image.v1+json" ]]; then
-          echo "INFO: Reference points to a container image config (${config_media_type}); skipping extra artifact fetch"
-          exit 0
-        fi
-
-        mkdir -p /var/workdir/source
-
-        fetched_count=0
-        while IFS=$'\t' read -r digest rel_path; do
-          [[ -n "${rel_path}" ]] || continue
-          if ! printf '%s\n' "${rel_path}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}"; then
-            continue
-          fi
-
-          dest_path="/var/workdir/source/${rel_path}"
-          resolved_dest="$(realpath -m "${dest_path}")"
-          if [[ ! "${resolved_dest}" == /var/workdir/source/* ]]; then
-            echo "WARN: Skipping path outside source root: ${rel_path}"
-            continue
-          fi
-
-          mkdir -p "$(dirname "${resolved_dest}")"
-          echo "INFO: Fetching blob ${digest} -> ${rel_path}"
-          retry oras blob fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${digest}" --output "${resolved_dest}"
-          fetched_count=$((fetched_count + 1))
-        done < <(jq -r '.layers[] | [.digest, (.annotations["org.opencontainers.image.title"] // "")] | @tsv' /tmp/manifest.json)
-
-        if [[ "${fetched_count}" -eq 0 ]]; then
-          echo "INFO: No files matched EXTRA_ARTIFACT_FILTER"
-        else
-          echo "INFO: Fetched ${fetched_count} extra artifact file(s) alongside SOURCE_ARTIFACT"
-        fi
-      computeResources:
-        limits:
-          memory: 2Gi
-        requests:
-          cpu: 100m
-          memory: 512Mi
     - name: sast-snyk-check
-      image: quay.io/konflux-ci/konflux-test:v1.5.1@sha256:e6b090c515168c8ed0fa932ffe0ac6f27dbc1ea41fdb2fe83cfcaa7829b910bd
-      workingDir: /var/workdir/source
+      computeResources:
+        limits:
+          memory: 6Gi
+        requests:
+          cpu: "1"
+          memory: 6Gi
+      image: quay.io/konflux-ci/konflux-test:v1.5.0@sha256:fbd5ad045b902065990218922aa6f343e8eb5fd039ecd445bc54819b8e968c3e
+      # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
+      # the cluster will set imagePullPolicy to IfNotPresent
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       volumeMounts:
-        - mountPath: /etc/secrets
-          name: snyk-secret
+        - name: snyk-secret
+          mountPath: "/etc/secrets"
           readOnly: true
-        - mountPath: /mnt/trusted-ca
-          name: trusted-ca
+        - name: trusted-ca
+          mountPath: /mnt/trusted-ca
           readOnly: true
       env:
         - name: SNYK_SECRET
@@ -261,10 +137,14 @@ spec:
         trap 'handle_error $(results.TEST_OUTPUT.path)' EXIT
 
         if [[ -z "${PROJECT_NAME}" ]]; then
-          PROJECT_NAME=${COMPONENT_LABEL}
+            PROJECT_NAME=${COMPONENT_LABEL}
         fi
 
         echo "INFO: The PROJECT_NAME used is: ${PROJECT_NAME}"
+
+        if [[ "${ARGS}" != *"--project-name"* ]]; then
+          ARGS="$ARGS --project-name=${PROJECT_NAME}"
+        fi
 
         # Installation of Red Hat certificates for cloning Red Hat internal repositories
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
@@ -295,7 +175,7 @@ spec:
         # The real exit code is always preserved in SNYK_EXIT_CODE.
         # Error codes (2+) always override, valid codes (0, 1, 3) only if no previous error.
         _snyk_code_test() {
-          snyk code test "$@" 1>&2 >>stdout.txt
+          snyk code test "$@" 1>&2>> stdout.txt
           local ec=$?
           if [[ "$ec" -ne 0 ]] && [[ "$ec" -ne 1 ]] && [[ "$ec" -ne 3 ]]; then
             SNYK_EXIT_CODE=$ec
@@ -307,7 +187,7 @@ spec:
         }
 
         SNYK_EXIT_CODE=0
-        SOURCE_CODE_DIR=/var/workdir
+        SOURCE_CODE_DIR=$(workspaces.workspace.path)
 
         # We ignore files using snyk ignore if the user set up the IGNORE_FILE_PATHS variable.
         (cd "${SOURCE_CODE_DIR}" && IFS="," && for path in $IGNORE_FILE_PATHS; do
@@ -320,7 +200,7 @@ spec:
         # shellcheck disable=SC2086
 
         # Generate full paths for each directory in TARGET_DIRS
-        IFS="," read -ra TARGETS_ARRAY <<<"$TARGET_DIRS"
+        IFS="," read -ra TARGETS_ARRAY <<< "$TARGET_DIRS"
         for d in "${TARGETS_ARRAY[@]}"; do
           potential_path="${SOURCE_CODE_DIR}/${d}"
           resolved_path=$(realpath -m "$potential_path")
@@ -345,7 +225,7 @@ spec:
         done
 
         # Merge all SARIF outputs
-        find "$SOURCE_CODE_DIR" -name "sast_snyk_check_out_*.json" -exec cat {} + >"${SOURCE_CODE_DIR}/sast_snyk_check_out.json"
+        find "$SOURCE_CODE_DIR" -name "sast_snyk_check_out_*.json" -exec cat {} + > "${SOURCE_CODE_DIR}/sast_snyk_check_out.json"
         set -e
         test_not_skipped=0
         SKIP_MSG="We found 0 supported files"
@@ -379,9 +259,9 @@ spec:
           fi
 
           # In order to generate csdiff/v1, we need to add the whole path of the source code as Snyk only provides an URI to embed the context
-          (cd "${SOURCE_CODE_DIR}" && csgrep --mode=json --embed-context=3 "${SOURCE_CODE_DIR}"/sast_snyk_check_out.json) |
-            csgrep --mode=json --strip-path-prefix="source/" \
-              >sast_snyk_check_out_all_findings.json
+          (cd  "${SOURCE_CODE_DIR}" && csgrep --mode=json --embed-context=3 "${SOURCE_CODE_DIR}"/sast_snyk_check_out.json) \
+            | csgrep --mode=json --strip-path-prefix="source/"  \
+            > sast_snyk_check_out_all_findings.json
 
           echo "INFO: Initial results:"
           csgrep --mode=evtstat sast_snyk_check_out_all_findings.json
@@ -424,7 +304,7 @@ spec:
             fi
 
             set +e
-            "${CMD[@]}" sast_snyk_check_out_all_findings.json >filtered_sast_snyk_check_out.json
+            "${CMD[@]}" sast_snyk_check_out_all_findings.json > filtered_sast_snyk_check_out.json
             status=$?
             set -e
             if [ "$status" -ne 0 ]; then
@@ -451,15 +331,15 @@ spec:
           fi
 
           coverage_ratio=0
-          if ((total_files > 0)); then
-            coverage_ratio=$((supported_files * 100 / total_files))
+          if (( total_files > 0 )); then
+              coverage_ratio=$((supported_files * 100 / total_files))
           fi
 
           # embed stats in results file and convert to SARIF
           csgrep --mode=sarif --set-scan-prop snyk-scanned-files-coverage:"${coverage_ratio}" \
-            --set-scan-prop snyk-scanned-files-success:"${supported_files}" \
-            --set-scan-prop snyk-scanned-files-total:"${total_files}" \
-            filtered_sast_snyk_check_out.json >sast_snyk_check_out.sarif
+                              --set-scan-prop snyk-scanned-files-success:"${supported_files}"  \
+                              --set-scan-prop snyk-scanned-files-total:"${total_files}" \
+                              filtered_sast_snyk_check_out.json  > sast_snyk_check_out.sarif
 
           # Create filtered SARIF for Tekton task result based on IMP_FINDINGS_ONLY parameter
           if [ "${IMP_FINDINGS_ONLY}" == "true" ]; then
@@ -468,14 +348,14 @@ spec:
             # - "error" → importance level 1
             # - "warning" (or missing level) → importance level 0
             RESULT_SARIF="result_sast_snyk_check_out.sarif"
-            csgrep --mode=sarif --imp-level 1 sast_snyk_check_out.sarif >"$RESULT_SARIF"
+            csgrep --mode=sarif --imp-level 1 sast_snyk_check_out.sarif > "$RESULT_SARIF"
           else
             # Use all findings for Tekton task result
             RESULT_SARIF="sast_snyk_check_out.sarif"
           fi
 
           TEST_OUTPUT=
-          parse_test_output "$(context.task.name)" sarif "$RESULT_SARIF" || true
+          parse_test_output "$(context.task.name)" sarif "$RESULT_SARIF"  || true
 
         # When the test is skipped, the "SNYK_EXIT_CODE" is 3 and it can also be 3 in some other situation
         elif [[ "$test_not_skipped" -eq 0 ]]; then
@@ -488,15 +368,15 @@ spec:
           ERROR_OUTPUT=$(make_result_json -r ERROR -t "$note")
         fi
         echo "${TEST_OUTPUT:-${ERROR_OUTPUT}}" | tee "$(results.TEST_OUTPUT.path)"
+    - name: upload
       computeResources:
         limits:
-          memory: 6Gi
+          memory: 256Mi
         requests:
-          cpu: "1"
-          memory: 6Gi
-    - name: upload
+          cpu: 100m
+          memory: 256Mi
       image: quay.io/konflux-ci/oras:latest@sha256:8b903a6363812d3d24fcc9022deb44f00110b34f2d1bd33d348df5a41ef88425
-      workingDir: /var/workdir/source
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca
@@ -517,25 +397,22 @@ spec:
 
         UPLOAD_FILES="sast_snyk_check_out.sarif excluded-findings.json"
         for UPLOAD_FILE in ${UPLOAD_FILES}; do
-          if [ ! -f "${UPLOAD_FILE}" ]; then
-            echo "No ${UPLOAD_FILE} exists. Skipping upload."
-            continue
-          fi
-          if [ "${UPLOAD_FILES}" == "excluded-findings.json" ]; then
-            MEDIA_TYPE=application/json
-          else
-            MEDIA_TYPE=application/sarif+json
-          fi
-          echo "Selecting auth"
-          select-oci-auth "${IMAGE_URL}" >"${HOME}/auth.json"
-          echo "Attaching to ${IMAGE_URL}"
-          if ! retry oras attach --no-tty --registry-config "$HOME/auth.json" --artifact-type "${MEDIA_TYPE}" "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"; then
-            echo "Failed to attach to ${IMAGE_URL}"
-          fi
+            if [ ! -f "${UPLOAD_FILE}" ]; then
+              echo "No ${UPLOAD_FILE} exists. Skipping upload."
+              continue
+            fi
+            if [ "${UPLOAD_FILES}" == "excluded-findings.json" ]; then
+                MEDIA_TYPE=application/json
+            else
+                MEDIA_TYPE=application/sarif+json
+            fi
+            echo "Selecting auth"
+            select-oci-auth "${IMAGE_URL}" > "${HOME}/auth.json"
+            echo "Attaching to ${IMAGE_URL}"
+            if ! retry oras attach --no-tty --registry-config "$HOME/auth.json" --artifact-type "${MEDIA_TYPE}" "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"
+            then
+              echo "Failed to attach to ${IMAGE_URL}"
+            fi
         done
-      computeResources:
-        limits:
-          memory: 256Mi
-        requests:
-          cpu: 100m
-          memory: 256Mi
+  workspaces:
+    - name: workspace

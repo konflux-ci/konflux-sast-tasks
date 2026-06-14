@@ -7,6 +7,8 @@
 /task/sast-shell-check-oci-ta-min           @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-snyk-check                       @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-snyk-check-oci-ta                @konflux-ci/integration-service-maintainers @sfowl
+/task/sast-gitleaks-check                   @konflux-ci/integration-service-maintainers @sfowl
+/task/sast-gitleaks-check-oci-ta            @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-unicode-check                    @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-unicode-check-oci-ta             @konflux-ci/integration-service-maintainers @sfowl
 /task/sast-unicode-check-oci-ta-min         @konflux-ci/integration-service-maintainers @sfowl
