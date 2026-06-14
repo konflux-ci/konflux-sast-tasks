@@ -2,15 +2,29 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: test-sast-snyk-check-retry
+  name: test-sast-gitleaks-check
 spec:
   description: |
-    Test that sast-snyk-check retries on exit code 2 (e.g. bad token / network error)
-    and reports ERROR after exhausting retries.
+    Test the sast-gitleaks-check task is runs successfully
   workspaces:
     - name: tests-workspace
   tasks:
+    - name: init
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-definitions.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/init/0.2/init.yaml
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
     - name: clone-repository
+      runAfter:
+        - init
       workspaces:
         - name: output
           workspace: tests-workspace
@@ -28,33 +42,37 @@ spec:
             value: main
           - name: pathInRepo
             value: task/git-clone/0.1/git-clone.yaml
-    - name: scan-with-snyk
+    - name: scan-with-gitleaks
       runAfter:
         - clone-repository
       workspaces:
         - name: workspace
           workspace: tests-workspace
       taskRef:
-        name: sast-snyk-check
+        name: sast-gitleaks-check
       params:
-        - name: SNYK_SECRET
-          value: snyk-bad-token
         - name: image-url
           value: ""
         - name: image-digest
           value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
+        - name: PROJECT_NAME
+          value: test_proj
     - name: check-result
       runAfter:
-        - scan-with-snyk
+        - scan-with-gitleaks
+      workspaces:
+        - name: workspace
+          workspace: tests-workspace
       params:
         - name: results
-          value: $(tasks.scan-with-snyk.results.TEST_OUTPUT)
+          value: $(tasks.scan-with-gitleaks.results.TEST_OUTPUT)
       taskSpec:
         params:
           - name: results
         steps:
           - name: check-result
             image: quay.io/konflux-ci/konflux-test:v1.5.1@sha256:e6b090c515168c8ed0fa932ffe0ac6f27dbc1ea41fdb2fe83cfcaa7829b910bd
+            workingDir: $(workspaces.workspace.path)
             env:
             - name: RESULTS
               value: $(params.results)
@@ -63,6 +81,8 @@ spec:
 
               set -e
 
+              # Running gitleaks on a repo with no leaks should
+              # result in a json with an empty array in it
               echo "$RESULTS"
-              echo -n "Expected ERROR result after retry exhaustion: "
-              echo "$RESULTS" | jq -e '.result == "ERROR"'
+              echo -n "Expected result: "
+              echo "$RESULTS" | jq -e '.result == "FAILURE" and .successes == 0 and .failures == 1 and .warnings == 0'

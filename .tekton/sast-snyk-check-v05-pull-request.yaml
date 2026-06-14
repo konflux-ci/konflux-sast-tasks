@@ -10,13 +10,13 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: |
       (( event == "pull_request" && target_branch == "main" ) || (event == "push" && target_branch.startsWith("gh-readonly-queue/main/"))) &&
-      ( "task/sast-snyk-check-oci-ta/0.4/***".pathChanged() || ".tekton/sast-snyk-check-oci-ta-v04-pull-request.yaml".pathChanged() )
+      ( "task/sast-snyk-check/0.5/***".pathChanged() || ".tekton/sast-snyk-check-v05-pull-request.yaml".pathChanged() )
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
-    appstudio.openshift.io/component: sast-snyk-check-oci-ta-v04
+    appstudio.openshift.io/component: sast-snyk-check-v05
     pipelines.appstudio.openshift.io/type: build
     release.appstudio.openshift.io/auto-release: "false"
-  name: sast-snyk-check-oci-ta-v04-on-pull-request
+  name: sast-snyk-check-v05-on-pull-request
   namespace: sast-tenant
 spec:
   params:
@@ -25,14 +25,13 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/sast-tenant/sast-snyk-check-oci-ta-v04:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/sast-tenant/sast-snyk-check-v05:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
     value: Dockerfile
   - name: path-context
-    # exclude recipe.yaml file
-    value: task/sast-snyk-check-oci-ta/0.4,!task/sast-snyk-check-oci-ta/0.4/recipe.yaml
+    value: task/sast-snyk-check/0.5
   pipelineSpec:
     finally:
     - name: show-summary
@@ -305,7 +304,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-sast-snyk-check-oci-ta-v04
+    serviceAccountName: build-pipeline-sast-snyk-check-v05
   workspaces:
   - name: git-auth
     secret:

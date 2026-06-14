@@ -4,19 +4,15 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/konflux-ci/konflux-sast-tasks?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      (( event == "pull_request" && target_branch == "main" ) || (event == "push" && target_branch.startsWith("gh-readonly-queue/main/"))) &&
-      ( "task/sast-snyk-check-oci-ta/0.4/***".pathChanged() || ".tekton/sast-snyk-check-oci-ta-v04-pull-request.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && ( "task/sast-gitleaks-check-oci-ta/0.1/***".pathChanged() || ".tekton/sast-gitleaks-check-oci-ta-v01-pull-request.yaml".pathChanged() )
   labels:
     appstudio.openshift.io/application: konflux-sast-tasks
-    appstudio.openshift.io/component: sast-snyk-check-oci-ta-v04
+    appstudio.openshift.io/component: sast-gitleaks-check-oci-ta-v01
     pipelines.appstudio.openshift.io/type: build
-    release.appstudio.openshift.io/auto-release: "false"
-  name: sast-snyk-check-oci-ta-v04-on-pull-request
+  name: sast-gitleaks-check-oci-ta-v01-on-push
   namespace: sast-tenant
 spec:
   params:
@@ -25,14 +21,12 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/sast-tenant/sast-snyk-check-oci-ta-v04:on-pr-{{revision}}
-  - name: image-expires-after
-    value: 5d
+    value: quay.io/redhat-user-workloads/sast-tenant/sast-gitleaks-check-oci-ta-v01:{{revision}}
   - name: dockerfile
     value: Dockerfile
   - name: path-context
     # exclude recipe.yaml file
-    value: task/sast-snyk-check-oci-ta/0.4,!task/sast-snyk-check-oci-ta/0.4/recipe.yaml
+    value: task/sast-gitleaks-check-oci-ta/0.1,!task/sast-gitleaks-check-oci-ta/0.1/recipe.yaml
   pipelineSpec:
     finally:
     - name: show-summary
@@ -305,7 +299,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-sast-snyk-check-oci-ta-v04
+    serviceAccountName: build-pipeline-sast-gitleaks-check-oci-ta-v01
   workspaces:
   - name: git-auth
     secret:

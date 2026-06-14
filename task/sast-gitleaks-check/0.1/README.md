@@ -1,0 +1,30 @@
+# sast-gitleaks-check task
+
+Scans source code for exposed secrets, ensuring keys, passwords, and tokens aren't leaked in repositories.
+
+See https://github.com/gitleaks/gitleaks for more information on how to use Gitleaks.
+
+## Parameters
+|name|description|default value|required|
+|---|---|---|---|
+|GITLEAKS_ARGS|Additional CLI arguments to pass to gitleaks|""|false|
+|image-url|Image URL.||true|
+|image-digest|Digest of the image to scan.||true|
+|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
+|PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
+|RECORD_EXCLUDED|Write excluded records in file. Useful for auditing (defaults to false).|false|false|
+|TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas.|.|false|
+|caTrustConfigMapName|The name of the ConfigMap to read CA bundle data from.|trusted-ca|false|
+|caTrustConfigMapKey|The name of the key in the ConfigMap that contains the CA bundle data.|ca-bundle.crt|false|
+
+## Results
+|name|description|
+|---|---|
+|TEST_OUTPUT|Tekton task test output.|
+
+## Workspaces
+|name|description|optional|
+|---|---|---|
+|workspace||false|
+
+## Additional info
