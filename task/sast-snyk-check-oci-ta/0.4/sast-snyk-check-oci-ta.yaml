@@ -165,8 +165,8 @@ spec:
           exit 0
         fi
 
-        # shellcheck source=/dev/null
         declare -a oras_opts=()
+        # shellcheck source=/dev/null
         source /usr/local/bin/oras_opts.sh
 
         IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
