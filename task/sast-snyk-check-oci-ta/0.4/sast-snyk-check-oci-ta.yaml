@@ -27,17 +27,6 @@ spec:
         the prefetched dependencies.
       type: string
       default: ""
-    - name: EXTRA_ARTIFACT_FILTER
-      description: Extended regex matching org.opencontainers.image.title
-        paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
-      type: string
-      default: (^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$
-    - name: FETCH_EXTRA_ARTIFACTS
-      description: When "true", fetch script-like files from image-url@image-digest
-        (OCI artifact manifest) into /var/workdir/source alongside the restored
-        SOURCE_ARTIFACT. Skipped for standard container images.
-      type: string
-      default: "false"
     - name: IGNORE_FILE_PATHS
       description: Directories or files to be excluded from Snyk scan (Comma-separated).
         Useful to split the directories of a git repo across multiple components.
@@ -118,7 +107,7 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:a246cf2267fe6fa68ae8885c6ca4141923edca3ccf9b56838d1ebe369d31b46d
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d6d6048bdb5a73697ff88734a3f33c54193405b901d3f5192b8251a878623906
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
@@ -133,90 +122,6 @@ spec:
           memory: 4Gi
         requests:
           memory: 4Gi
-    - name: fetch-extra-artifacts
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:a246cf2267fe6fa68ae8885c6ca4141923edca3ccf9b56838d1ebe369d31b46d
-      workingDir: /var/workdir
-      volumeMounts:
-        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
-          name: trusted-ca
-          readOnly: true
-          subPath: ca-bundle.crt
-      env:
-        - name: FETCH_EXTRA_ARTIFACTS
-          value: $(params.FETCH_EXTRA_ARTIFACTS)
-        - name: EXTRA_ARTIFACT_FILTER
-          value: $(params.EXTRA_ARTIFACT_FILTER)
-        - name: IMAGE_URL
-          value: $(params.image-url)
-        - name: IMAGE_DIGEST
-          value: $(params.image-digest)
-        - name: CA_FILE
-          value: /etc/pki/tls/certs/ca-custom-bundle.crt
-      script: |
-        #!/usr/bin/env bash
-        set -euo pipefail
-
-        if [[ "${FETCH_EXTRA_ARTIFACTS}" != "true" ]]; then
-          exit 0
-        fi
-
-        if [[ -z "${IMAGE_URL}" || -z "${IMAGE_DIGEST}" ]]; then
-          echo "INFO: image-url/image-digest missing, cannot fetch extra artifacts"
-          exit 0
-        fi
-
-        declare -a oras_opts=()
-        # shellcheck source=/dev/null
-        source /usr/local/bin/oras_opts.sh
-
-        IMAGE_REF="${IMAGE_URL}@${IMAGE_DIGEST}"
-        echo "INFO: Fetching extra artifacts from OCI reference ${IMAGE_REF}"
-
-        authfile="$(mktemp)"
-        trap 'rm -f "${authfile}"' EXIT
-        /usr/local/bin/select-oci-auth.sh "${IMAGE_URL}" >"${authfile}"
-
-        retry oras manifest fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_REF}" >"/tmp/manifest.json"
-
-        config_media_type="$(jq -r '.config.mediaType // ""' /tmp/manifest.json)"
-        if [[ "${config_media_type}" == "application/vnd.oci.image.config.v1+json" ]] || [[ "${config_media_type}" == "application/vnd.docker.container.image.v1+json" ]]; then
-          echo "INFO: Reference points to a container image config (${config_media_type}); skipping extra artifact fetch"
-          exit 0
-        fi
-
-        mkdir -p /var/workdir/source
-
-        fetched_count=0
-        while IFS=$'\t' read -r digest rel_path; do
-          [[ -n "${rel_path}" ]] || continue
-          if ! printf '%s\n' "${rel_path}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}"; then
-            continue
-          fi
-
-          dest_path="/var/workdir/source/${rel_path}"
-          resolved_dest="$(realpath -m "${dest_path}")"
-          if [[ ! "${resolved_dest}" == /var/workdir/source/* ]]; then
-            echo "WARN: Skipping path outside source root: ${rel_path}"
-            continue
-          fi
-
-          mkdir -p "$(dirname "${resolved_dest}")"
-          echo "INFO: Fetching blob ${digest} -> ${rel_path}"
-          retry oras blob fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${digest}" --output "${resolved_dest}"
-          fetched_count=$((fetched_count + 1))
-        done < <(jq -r '.layers[] | [.digest, (.annotations["org.opencontainers.image.title"] // "")] | @tsv' /tmp/manifest.json)
-
-        if [[ "${fetched_count}" -eq 0 ]]; then
-          echo "INFO: No files matched EXTRA_ARTIFACT_FILTER"
-        else
-          echo "INFO: Fetched ${fetched_count} extra artifact file(s) alongside SOURCE_ARTIFACT"
-        fi
-      computeResources:
-        limits:
-          memory: 2Gi
-        requests:
-          cpu: 100m
-          memory: 512Mi
     - name: sast-snyk-check
       image: quay.io/konflux-ci/konflux-test:v1.5.1@sha256:e6b090c515168c8ed0fa932ffe0ac6f27dbc1ea41fdb2fe83cfcaa7829b910bd
       workingDir: /var/workdir/source
