@@ -187,11 +187,11 @@ spec:
         }
 
         SNYK_EXIT_CODE=0
-        SOURCE_CODE_DIR=$(workspaces.workspace.path)
+        SOURCE_CODE_DIR=$(workspaces.workspace.path)/source
 
         # We ignore files using snyk ignore if the user set up the IGNORE_FILE_PATHS variable.
         (cd "${SOURCE_CODE_DIR}" && IFS="," && for path in $IGNORE_FILE_PATHS; do
-          snyk ignore --file-path="source/${path}"
+          snyk ignore --file-path="${path}"
         done)
 
         set +e
@@ -260,7 +260,6 @@ spec:
 
           # In order to generate csdiff/v1, we need to add the whole path of the source code as Snyk only provides an URI to embed the context
           (cd  "${SOURCE_CODE_DIR}" && csgrep --mode=json --embed-context=3 "${SOURCE_CODE_DIR}"/sast_snyk_check_out.json) \
-            | csgrep --mode=json --strip-path-prefix="source/"  \
             > sast_snyk_check_out_all_findings.json
 
           echo "INFO: Initial results:"

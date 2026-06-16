@@ -114,7 +114,7 @@ spec:
           update-ca-trust
         fi
 
-        SOURCE_CODE_DIR=$(workspaces.workspace.path)
+        SOURCE_CODE_DIR=$(workspaces.workspace.path)/source
 
         set +e
         echo "INFO: Running 'gitleaks dir'.."
