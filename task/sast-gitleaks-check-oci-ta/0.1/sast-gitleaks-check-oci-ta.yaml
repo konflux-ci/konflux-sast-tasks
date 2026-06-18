@@ -143,7 +143,7 @@ spec:
           update-ca-trust
         fi
 
-        SOURCE_CODE_DIR=/var/workdir
+        SOURCE_CODE_DIR=/var/workdir/source
 
         set +e
         echo "INFO: Running 'gitleaks dir'.."
