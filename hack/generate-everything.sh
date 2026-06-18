@@ -15,8 +15,8 @@ yq --version | grep -q mikefarah/yq || {
 # and the sources they are generated from.
 hack/build-manifests.sh
 hack/generate-ta-tasks.sh
-hack/generate-buildah-remote.sh
 
-hack/generate-pipelines-readme.py
-
-hack/update_renovate_json_based_on_codeowners.py -o renovate.json
+# XXX Not used in konflux-sast-tasks
+# hack/generate-buildah-remote.sh
+# hack/generate-pipelines-readme.py
+# hack/update_renovate_json_based_on_codeowners.py -o renovate.json
