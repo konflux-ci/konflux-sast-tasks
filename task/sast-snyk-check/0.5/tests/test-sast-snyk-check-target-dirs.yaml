@@ -5,8 +5,9 @@ metadata:
   name: test-sast-snyk-check-target-dirs
 spec:
   description: |
-    Test that sast-snyk-check resolves TARGET_DIRS relative to the source
-    checkout directory, not the workspace root.
+    Test that sast-snyk-check correctly merges SARIF output when TARGET_DIRS
+    contains multiple comma-separated directories. The finding is in the
+    middle directory (test-project) to prove the merge isn't first-or-last wins.
   workspaces:
     - name: tests-workspace
   tasks:
@@ -57,7 +58,7 @@ spec:
         - name: image-digest
           value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
         - name: TARGET_DIRS
-          value: "test-project"
+          value: "gcc,test-project,python-samples"
     - name: check-result
       runAfter:
         - scan-with-snyk
@@ -87,4 +88,6 @@ spec:
               echo "$RESULTS" | jq -e '.result == "FAILURE" and .successes == 0 and .failures == 1 and .warnings == 0'
 
               report=$(find . -name 'sast_snyk_check_out.sarif')
+              echo -n "Validating SARIF structure: "
+              jq -e '.version != null and (.runs | length) > 0' "$report"
               jq -e 'select(.inlineExternalProperties[0].externalizedProperties["analyzer-version-snyk-code"] != null)' "$report"
