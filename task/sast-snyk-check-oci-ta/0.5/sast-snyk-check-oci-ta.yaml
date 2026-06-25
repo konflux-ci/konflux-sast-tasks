@@ -369,6 +369,13 @@ spec:
           # shellcheck disable=SC2086
           RETRY_INTERVAL=30 retry _snyk_code_test $ARGS "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json"
 
+          sarif_out="${resolved_path}/sast_snyk_check_out_${d//\//_}.json"
+          if [[ "$d" != "." && -f "$sarif_out" ]]; then
+            prefix="${d%/}/"
+            echo "INFO: Prepending path prefix '${prefix}' to ${sarif_out}"
+            csgrep --mode=sarif --prepend-path-prefix="$prefix" "$sarif_out" >"${sarif_out}.tmp" && mv "${sarif_out}.tmp" "$sarif_out"
+          fi
+
         done
 
         # Merge all per-target SARIF outputs into a single valid SARIF file

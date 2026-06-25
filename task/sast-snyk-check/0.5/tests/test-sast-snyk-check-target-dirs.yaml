@@ -91,3 +91,6 @@ spec:
               echo -n "Validating SARIF structure: "
               jq -e '.version != null and (.runs | length) > 0' "$report"
               jq -e 'select(.inlineExternalProperties[0].externalizedProperties["analyzer-version-snyk-code"] != null)' "$report"
+
+              echo -n "Checking path prefix in findings: "
+              jq -e '.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri | startswith("test-project/")' "$report"
