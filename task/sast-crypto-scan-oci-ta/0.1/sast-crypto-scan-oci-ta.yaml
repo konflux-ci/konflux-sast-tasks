@@ -64,6 +64,13 @@ spec:
         optional: true
     - name: workdir
       emptyDir: {}
+    - name: bound-token
+      projected:
+        sources:
+          - serviceAccountToken:
+              audience: openshift
+              expirationSeconds: 7200
+              path: quay-token
   stepTemplate:
     volumeMounts:
       - mountPath: /var/workdir
@@ -80,8 +87,38 @@ spec:
           name: trusted-ca
           readOnly: true
           subPath: ca-bundle.crt
+    - name: quay-login
+      image: registry.redhat.io/ubi9/skopeo:latest
+      volumeMounts:
+        - name: bound-token
+          mountPath: /var/run/secrets/tokens
+          readOnly: true
+      env:
+        - name: QUAY_REGISTRY_HOSTNAME
+          value: quay.io
+        - name: ROBOT_ACCOUNT
+          value: "exd-guild-security+konflux_crypto_rules_pull"
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        TOKEN=$(cat /var/run/secrets/tokens/quay-token)
+        echo -n "Token length: "
+        echo -n ${TOKEN} | wc -c
+        QUAY_TOKEN=$(curl -s \
+          --user "${ROBOT_ACCOUNT}:${TOKEN}" \
+          "https://${QUAY_REGISTRY_HOSTNAME}/oauth2/federation/robot/token" \
+          | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+        echo -n "Quay Token length: "
+        echo -n ${QUAY_TOKEN} | wc -c
+
+        skopeo login \
+          --username "${ROBOT_ACCOUNT}" \
+          --password "${QUAY_TOKEN}" \
+          "${QUAY_REGISTRY_HOSTNAME}"
+
     - name: rh-crypto-scanner
-      image:  images.paas.redhat.com/exd-sp-guild-security/rh-crypto-scanner-image@sha256:5d9e7c978e0cbada5b0e014d24b208a6adf614b11d36766ea464a93c5fc9239c
+      image: images.paas.redhat.com/exd-sp-guild-security/rh-crypto-scanner-image@sha256:5d9e7c978e0cbada5b0e014d24b208a6adf614b11d36766ea464a93c5fc9239c
       workingDir: /var/workdir/source
       env:
         - name: TARGET_DIRS
