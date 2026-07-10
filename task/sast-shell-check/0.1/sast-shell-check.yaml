@@ -50,6 +50,12 @@ spec:
       type: string
       description: Target directories in component's source code. Multiple values should be separated with commas.
       default: "."
+    - name: SKIP_JINJA
+      type: string
+      description: >-
+        Whether to skip files containing Jinja2 template syntax ({{ }}, {% %}, {# #}).
+        ShellCheck cannot parse Jinja2 constructs, so scanning such files produces unreliable findings.
+      default: "true"
     - name: caTrustConfigMapName
       type: string
       description: The name of the ConfigMap to read CA bundle data from.
@@ -94,6 +100,8 @@ spec:
           value: $(params.IMP_FINDINGS_ONLY)
         - name: TARGET_DIRS
           value: $(params.TARGET_DIRS)
+        - name: SKIP_JINJA
+          value: $(params.SKIP_JINJA)
         - name: COMPONENT_LABEL
           valueFrom:
             fieldRef:
@@ -152,6 +160,10 @@ spec:
                 export SC_JOBS=$(((quota + period - 1) / period))
                 echo "INFO: Setting SC_JOBS=${SC_JOBS} based on cgroups v2 max for run-shellcheck.sh"
             fi
+        fi
+
+        if [[ "${SKIP_JINJA}" == "true" ]]; then
+            export SC_SKIP_JINJA=1
         fi
 
         # generate all shellcheck result JSON files to $SC_RESULTS_DIR, which defaults to ./shellcheck-results/
