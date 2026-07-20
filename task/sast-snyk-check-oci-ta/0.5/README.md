@@ -12,7 +12,6 @@ See https://snyk.io/product/snyk-code/ and https://snyk.io/ for more information
 |name|description|default value|required|
 |---|---|---|---|
 |ARGS|Append arguments.|""|false|
-|CACHI2_ARTIFACT|The Trusted Artifact URI pointing to the artifact with the prefetched dependencies.|""|false|
 |EXTRA_ARTIFACT_FILTER|Extended regex matching org.opencontainers.image.title paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.|(^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$|false|
 |FETCH_EXTRA_ARTIFACTS|When "true", fetch script-like files from image-url@image-digest (OCI artifact manifest) into /var/workdir/source alongside the restored SOURCE_ARTIFACT. Skipped for standard container images.|false|false|
 |IGNORE_FILE_PATHS|Directories or files to be excluded from Snyk scan (Comma-separated). Useful to split the directories of a git repo across multiple components.|""|false|
