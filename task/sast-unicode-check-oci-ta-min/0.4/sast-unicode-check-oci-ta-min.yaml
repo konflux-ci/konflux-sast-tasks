@@ -12,11 +12,6 @@ spec:
   description: Scans source code for non-printable unicode characters in all text
     files.
   params:
-  - default: ""
-    description: The Trusted Artifact URI pointing to the artifact with the prefetched
-      dependencies.
-    name: CACHI2_ARTIFACT
-    type: string
   - default: -p bidi -v -d -t
     description: arguments for find-unicode-control command.
     name: FIND_UNICODE_CONTROL_ARGS
@@ -75,7 +70,6 @@ spec:
   - args:
     - use
     - $(params.SOURCE_ARTIFACT)=/var/workdir/source
-    - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
     image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d352c2294e3ef37972686162098b5eb4507bcc92d84bec75ee2429fddbc77b8d
     name: use-trusted-artifact
     volumeMounts:
