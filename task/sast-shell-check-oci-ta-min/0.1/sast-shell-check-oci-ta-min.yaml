@@ -272,7 +272,7 @@ spec:
       value: $(params.image-url)
     - name: IMAGE_DIGEST
       value: $(params.image-digest)
-    image: quay.io/konflux-ci/oras:latest@sha256:18fa6c06c8a80ba272354f969e7a80c09d834c4889acc7079353080d7e979d33
+    image: quay.io/konflux-ci/oras:latest@sha256:561847430299db122ba499a3c1a4e28d850c191c9da6048a23361963eda49cac
     name: upload
     script: |
       #!/usr/bin/env bash
