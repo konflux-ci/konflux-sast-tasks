@@ -79,7 +79,7 @@ spec:
     - use
     - $(params.SOURCE_ARTIFACT)=/var/workdir/source
     - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
-    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d352c2294e3ef37972686162098b5eb4507bcc92d84bec75ee2429fddbc77b8d
+    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:254989d35310c0998eb2ae60aa4703da842d99d82ed434fd5208cc9639d32969
     name: use-trusted-artifact
     volumeMounts:
     - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
