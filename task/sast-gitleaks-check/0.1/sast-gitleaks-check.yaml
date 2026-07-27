@@ -71,7 +71,7 @@ spec:
         requests:
           cpu: "1"
           memory: 6Gi
-      image: quay.io/konflux-ci/konflux-test:v1.5.3@sha256:37299834a7a95c042e2d9bc24d0668ccfc8dd4c96baf1339a0f3f46915e91455
+      image: quay.io/konflux-ci/konflux-test:v1.5.4@sha256:dae74bf0d6fc349d3ae140d9e3a921ad5009fdf8dade3186bfd9b65fbe3a365b
       workingDir: $(workspaces.workspace.path)
       volumeMounts:
         - name: trusted-ca
@@ -236,7 +236,7 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
-      image: quay.io/konflux-ci/oras:latest@sha256:18fa6c06c8a80ba272354f969e7a80c09d834c4889acc7079353080d7e979d33
+      image: quay.io/konflux-ci/oras:latest@sha256:561847430299db122ba499a3c1a4e28d850c191c9da6048a23361963eda49cac
       workingDir: $(workspaces.workspace.path)
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
