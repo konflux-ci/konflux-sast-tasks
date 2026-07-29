@@ -273,7 +273,7 @@ spec:
         - name: name
           value: sast-unicode-check-oci-ta
         - name: bundle
-          value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-oci-ta-min-v04@sha256:2d74ebf5bcabd7e4852ba308bba3a1632c0f478cff1cb3631dcb1ff30f2bb3ca
+          value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-oci-ta-v04@sha256:82990be21c9b271d3adc2ee1a89b1543e55551e6171678fe13d8125b855fa062
         - name: kind
           value: task
         resolver: bundles
