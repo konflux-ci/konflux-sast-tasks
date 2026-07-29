@@ -1,0 +1,175 @@
+{
+  "uuid": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+  "cve_id": "CVE-2026-24352",
+  "impact": "CRITICAL",
+  "components": ["test"],
+  "title": "PluXml CMS: Session hijacking via session fixation vulnerability",
+  "trackers": [],
+  "comment_zero": "PluXml CMS allows a user's session identifier to be set before authentication. The value of this session ID stays the same after authentication. This behaviour enables an attacker to fix a session ID\nfor a victim and later hijack the authenticated session.\n\nThe vendor was notified early about this vulnerability, but didn't respond with the details of vulnerability or vulnerable version range. Only versions 5.8.21 and 5.9.0-rc7 were tested and confirmed as vulnerable, other versions were not tested and might also be vulnerable.",
+  "cve_description": "A flaw was found in PluXml CMS. This vulnerability allows a remote attacker to perform session hijacking due to a session fixation issue. The system sets a user's session identifier before authentication, and this identifier remains the same after successful login. An attacker can exploit this by fixing a victim's session ID, enabling them to hijack the authenticated session and gain unauthorized access.",
+  "selected_cve_description": "A flaw was found in PluXml CMS. This vulnerability allows a remote attacker to perform session hijacking due to a session fixation issue. The system sets a user's session identifier before authentication, and this identifier remains the same after successful login. An attacker can exploit this by fixing a victim's session ID, enabling them to hijack the authenticated session and gain unauthorized access.",
+  "requires_cve_description": "",
+  "statement": "",
+  "cwe_id": "CWE-613",
+  "unembargo_dt": "2026-02-27T11:35:27.107000Z",
+  "source": "CVEORG",
+  "reported_dt": "2026-02-27T12:06:53.681514Z",
+  "mitigation": "",
+  "major_incident_state": "",
+  "major_incident_start_dt": null,
+  "nist_cvss_validation": "",
+  "upstream_data": [],
+  "affects": [],
+  "comments": [],
+  "aegis_meta": {
+    "title": [
+      {
+        "type": "AI-Bot",
+        "value": "PluXml CMS: Session hijacking via session fixation vulnerability",
+        "timestamp": "2026-07-10T07:09:38.101706+00:00",
+        "confidence": 0.9,
+        "explanation": "The suggested title and description are derived directly from the provided comment_zero and the CVE record, focusing on the core vulnerability of session fixation leading to session hijacking in PluXml CMS. The language is simplified for a non-technical audience, avoiding jargon and technical specifics like version numbers, while clearly outlining the impact.",
+        "data_quality": 0.9
+      }
+    ],
+    "cwe_id": [
+      {
+        "type": "AI-Bot",
+        "value": "CWE-613",
+        "timestamp": "2026-07-10T07:09:38.101706+00:00",
+        "confidence": 0.9,
+        "explanation": "The vulnerability in PluXml CMS allows an attacker to fix a user's session ID before authentication, which persists after login, enabling session hijacking. This aligns with CWE-613, Insufficient Session Expiration, as the session identifier is not properly invalidated or regenerated upon authentication, allowing its reuse.",
+        "data_quality": 0.9
+      }
+    ],
+    "impact": [
+      {
+        "type": "AI-Bot",
+        "value": "CRITICAL",
+        "timestamp": "2026-07-10T07:09:38.101706+00:00",
+        "confidence": 0.9,
+        "explanation": "The vulnerability in PluXml CMS allows a remote attacker to perform session hijacking through session fixation. The attacker can set a victim's session ID before authentication, and this ID persists after the victim logs in, enabling the attacker to hijack the authenticated session. This leads to a complete compromise of confidentiality and integrity, and potentially availability, within the application's scope.\n\n- **Attack Vector (AV): Network** - The vulnerability can be exploited remotely over the network.\n- **Attack Complexity (AC): Low** - Exploitation does not require complex conditions.\n- **Privileges Required (PR): None** - The attacker does not need any prior authentication or privileges.\n- **User Interaction (UI): None** - The attacker can fix the session ID without requiring active interaction from the victim.\n- **Scope (S): Unchanged** - The vulnerability affects the application itself and does not extend to other security domains.\n- **Confidentiality (C): High** - Full access to the victim's authenticated session and associated data.\n- **Integrity (I): High** - The attacker can perform any actions on behalf of the victim, including modifying data.\n- **Availability (A): High** - The attacker can disrupt the legitimate user's access or render the service unavailable to them.",
+        "data_quality": 0.9
+      }
+    ],
+    "processed": true,
+    "_cvss3_vector": [
+      {
+        "type": "AI-Bot",
+        "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "timestamp": "2026-07-10T07:09:38.101706+00:00",
+        "confidence": 0.9,
+        "explanation": "The vulnerability in PluXml CMS allows a remote attacker to perform session hijacking through session fixation. The attacker can set a victim's session ID before authentication, and this ID persists after the victim logs in, enabling the attacker to hijack the authenticated session. This leads to a complete compromise of confidentiality and integrity, and potentially availability, within the application's scope.\n\n- **Attack Vector (AV): Network** - The vulnerability can be exploited remotely over the network.\n- **Attack Complexity (AC): Low** - Exploitation does not require complex conditions.\n- **Privileges Required (PR): None** - The attacker does not need any prior authentication or privileges.\n- **User Interaction (UI): None** - The attacker can fix the session ID without requiring active interaction from the victim.\n- **Scope (S): Unchanged** - The vulnerability affects the application itself and does not extend to other security domains.\n- **Confidentiality (C): High** - Full access to the victim's authenticated session and associated data.\n- **Integrity (I): High** - The attacker can perform any actions on behalf of the victim, including modifying data.\n- **Availability (A): High** - The attacker can disrupt the legitimate user's access or render the service unavailable to them.",
+        "data_quality": 0.9
+      }
+    ],
+    "cve_description": [
+      {
+        "type": "AI-Bot",
+        "value": "A flaw was found in PluXml CMS. This vulnerability allows a remote attacker to perform session hijacking due to a session fixation issue. The system sets a user's session identifier before authentication, and this identifier remains the same after successful login. An attacker can exploit this by fixing a victim's session ID, enabling them to hijack the authenticated session and gain unauthorized access.",
+        "timestamp": "2026-07-10T07:09:38.101706+00:00",
+        "confidence": 0.9,
+        "explanation": "The suggested title and description are derived directly from the provided comment_zero and the CVE record, focusing on the core vulnerability of session fixation leading to session hijacking in PluXml CMS. The language is simplified for a non-technical audience, avoiding jargon and technical specifics like version numbers, while clearly outlining the impact.",
+        "data_quality": 0.9
+      }
+    ]
+  },
+  "package_versions": [],
+  "acknowledgments": [],
+  "references": [
+    {
+      "description": "",
+      "flaw": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+      "type": "EXTERNAL",
+      "url": "https://cert.pl/posts/2026/03/CVE-2026-24350",
+      "uuid": "b9e3a8ba-5a9c-4504-8ca5-e58c91db9bfa",
+      "embargoed": false,
+      "visibility": "PUBLIC",
+      "alerts": [],
+      "created_dt": "2026-02-27T12:06:54.025433Z",
+      "updated_dt": "2026-02-27T13:09:14Z"
+    },
+    {
+      "description": "",
+      "flaw": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+      "type": "EXTERNAL",
+      "url": "https://pluxml.org/",
+      "uuid": "df79087b-0ceb-46f5-b4e1-f51ab214aa85",
+      "embargoed": false,
+      "visibility": "PUBLIC",
+      "alerts": [],
+      "created_dt": "2026-02-27T12:06:53.910134Z",
+      "updated_dt": "2026-02-27T13:09:14Z"
+    },
+    {
+      "description": "",
+      "flaw": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+      "type": "SOURCE",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-24352",
+      "uuid": "eff70562-ebcf-4bac-bbca-7960ddca8d40",
+      "embargoed": false,
+      "visibility": "PUBLIC",
+      "alerts": [],
+      "created_dt": "2026-02-27T12:06:53.803597Z",
+      "updated_dt": "2026-02-27T13:09:14Z"
+    }
+  ],
+  "cvss_scores": [
+    {
+      "flaw": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+      "comment": "",
+      "cvss_version": "V3",
+      "issuer": "NIST",
+      "score": 9.8,
+      "uuid": "a24ff6e3-9c21-402d-b061-fa56689204e9",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "embargoed": false,
+      "visibility": "PUBLIC",
+      "alerts": [],
+      "created_dt": "2026-02-27T18:40:07.549356Z",
+      "updated_dt": "2026-02-27T18:40:07Z"
+    },
+    {
+      "flaw": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+      "comment": "",
+      "cvss_version": "V4",
+      "issuer": "CVEORG",
+      "score": 4.8,
+      "uuid": "dc5e2b31-622d-4fc1-9daf-aae64c7b41b8",
+      "vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:P/VC:L/VI:L/VA:N/SC:N/SI:N/SA:N",
+      "embargoed": false,
+      "visibility": "PUBLIC",
+      "alerts": [],
+      "created_dt": "2026-02-27T12:06:53.691833Z",
+      "updated_dt": "2026-07-13T15:17:58Z"
+    },
+    {
+      "flaw": "9093293b-521d-4f07-b4b6-117b60bf98aa",
+      "comment": "",
+      "cvss_version": "V3",
+      "issuer": "RH",
+      "score": 9.8,
+      "uuid": "3de6630c-40c0-4356-8f94-f1a5387b76c9",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "embargoed": false,
+      "visibility": "PUBLIC",
+      "alerts": [],
+      "created_dt": "2026-07-10T07:10:35.124222Z",
+      "updated_dt": "2026-07-10T07:10:35Z"
+    }
+  ],
+  "labels": [],
+  "embargoed": false,
+  "visibility": "PUBLIC",
+  "created_dt": "2026-02-27T12:06:53.681514Z",
+  "updated_dt": "2026-07-10T07:16:25Z",
+  "classification": {
+    "state": "TRIAGE",
+    "workflow": "DEFAULT"
+  },
+  "group_key": null,
+  "owner": "",
+  "task_key": "OSIM-74115",
+  "team_id": null,
+  "alerts": []
+}
