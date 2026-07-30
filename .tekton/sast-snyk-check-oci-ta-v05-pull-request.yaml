@@ -273,7 +273,7 @@ spec:
         - name: name
           value: sast-unicode-check-oci-ta
         - name: bundle
-          value: quay.io/redhat-user-workloads/sast-tenant/sast-unicode-check-oci-ta-v04@sha256:82990be21c9b271d3adc2ee1a89b1543e55551e6171678fe13d8125b855fa062
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.4@sha256:4961c44d6475f0343fe73c556a44204daa85d8c47e23f98d723255d1ff98271d
         - name: kind
           value: task
         resolver: bundles
