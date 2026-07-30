@@ -1,0 +1,84 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-snyk-check-oci-ta
+spec:
+  description: |
+    Test for sast-snyk-check-oci-ta. FETCH_EXTRA_ARTIFACTS is false, so
+    fetch-extra-artifacts exits without fetching script-like OCI artifacts. The Snyk
+    scan still runs against trusted source from git-clone-oci-ta.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: init
+      taskRef:
+        resolver: bundles
+        params:
+          - name: name
+            value: init
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-init:0.4@sha256:5a423246792ac501ea279229b42ee57da9927da441c04b5c9ff86817b0856b08
+          - name: kind
+            value: task
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+    - name: clone-repository
+      runAfter:
+        - init
+      params:
+        - name: url
+          value: https://github.com/konflux-ci/test-data-sast
+        - name: revision
+          value: main
+        - name: ociStorage
+          value: registry-service.kind-registry/sast-snyk-check-oci-ta-test:git
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/build-pipeline-tasks.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/git-clone-oci-ta/git-clone-oci-ta.yaml
+    - name: scan-with-snyk
+      runAfter:
+        - clone-repository
+      taskRef:
+        name: sast-snyk-check-oci-ta
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: FETCH_EXTRA_ARTIFACTS
+          value: "false"
+        - name: image-url
+          # TODO add credentials for `oci-attach` so that upload can be tested
+          # for now, set this to empty string to force skipping of upload results step
+          value: ""
+        - name: image-digest
+          value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
+    - name: check-result
+      runAfter:
+        - scan-with-snyk
+      params:
+        - name: results
+          value: $(tasks.scan-with-snyk.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+          - name: results
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.5.4@sha256:dae74bf0d6fc349d3ae140d9e3a921ad5009fdf8dade3186bfd9b65fbe3a365b
+            env:
+            - name: RESULTS
+              value: $(params.results)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              echo "$RESULTS"
+              echo -n "Expected result: "
+              echo "$RESULTS" | jq -e '.result == "FAILURE" and .successes == 0 and .failures == 1 and .warnings == 0'
