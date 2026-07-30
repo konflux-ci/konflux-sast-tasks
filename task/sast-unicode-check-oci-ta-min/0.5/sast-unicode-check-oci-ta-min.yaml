@@ -6,7 +6,7 @@ metadata:
     tekton.dev/pipelines.minVersion: 0.12.1
     tekton.dev/tags: konflux
   labels:
-    app.kubernetes.io/version: "0.5"
+    app.kubernetes.io/version: "0.4"
   name: sast-unicode-check-oci-ta-min
 spec:
   description: Scans source code for non-printable unicode characters in all text
