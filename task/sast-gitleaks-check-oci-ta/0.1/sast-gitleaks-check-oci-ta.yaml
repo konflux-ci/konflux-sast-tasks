@@ -14,6 +14,11 @@ spec:
 
     See https://github.com/gitleaks/gitleaks for more information on how to use Gitleaks.
   params:
+    - name: CACHI2_ARTIFACT
+      description: The Trusted Artifact URI pointing to the artifact with
+        the prefetched dependencies.
+      type: string
+      default: ""
     - name: GITLEAKS_ARGS
       description: Additional CLI arguments to pass to gitleaks
       type: string
@@ -83,6 +88,7 @@ spec:
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
+        - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca
