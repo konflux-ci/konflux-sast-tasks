@@ -2,7 +2,6 @@
 base: ../../sast-snyk-check/0.5/sast-snyk-check.yaml
 add:
   - use-source
-  - use-prefetch
 preferStepTemplate: true
 removeWorkspaces:
   - workspace
