@@ -2,7 +2,6 @@
 base: ../../sast-gitleaks-check/0.1/sast-gitleaks-check.yaml
 add:
   - use-source
-  - use-prefetch
 preferStepTemplate: true
 removeWorkspaces:
   - workspace

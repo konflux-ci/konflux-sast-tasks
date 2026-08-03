@@ -2,7 +2,6 @@
 base: ../../sast-unicode-check/0.4/sast-unicode-check.yaml
 add:
   - use-source
-  - use-prefetch
 preferStepTemplate: true
 removeWorkspaces:
   - workspace

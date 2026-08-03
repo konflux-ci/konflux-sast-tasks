@@ -12,11 +12,6 @@ spec:
   description: Scans source code for non-printable unicode characters in all
     text files.
   params:
-    - name: CACHI2_ARTIFACT
-      description: The Trusted Artifact URI pointing to the artifact with
-        the prefetched dependencies.
-      type: string
-      default: ""
     - name: FIND_UNICODE_CONTROL_ARGS
       description: arguments for find-unicode-control command.
       type: string
@@ -87,7 +82,6 @@ spec:
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
-        - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca

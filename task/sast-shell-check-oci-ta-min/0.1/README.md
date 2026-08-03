@@ -6,7 +6,6 @@ ShellCheck is a static analysis tool, gives warnings and suggestions for bash/sh
 ## Parameters
 |name|description|default value|required|
 |---|---|---|---|
-|CACHI2_ARTIFACT|The Trusted Artifact URI pointing to the artifact with the prefetched dependencies.|""|false|
 |IMP_FINDINGS_ONLY|Whether to include important findings only|true|false|
 |KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 |PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
