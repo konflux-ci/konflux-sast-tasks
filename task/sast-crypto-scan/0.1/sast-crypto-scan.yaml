@@ -1,0 +1,178 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sast-crypto-scan
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: "konflux"
+  labels:
+    app.kubernetes.io/version: "0.1"
+spec:
+  description: >-
+    The sast-crypto-scan task uses [rh-crypto-scanner-image](https://gitlab.cee.redhat.com/security-guild/crypto-scanning/rh-crypto-scanner-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
+    It reports crypto algorithms in a CycloneDX format (cbom.json).
+  params:
+    - name: TARGET_DIRS
+      description: Target directories in component's source code. Multiple values should be separated with commas.
+      type: string
+      default: "."
+    - name: SKIP_SBOM_GENERATION
+      description: Skip SBOM-related operations. This will likely cause EC policies to fail if enabled
+      type: string
+      default: "false"
+    - name: SCAN_TIMEOUT
+      description: Timeout scan if it takes more than the time specified
+      type: string
+      default: "30m"
+    - name: caTrustConfigMapName
+      type: string
+      description: The name of the ConfigMap to read CA bundle data from.
+      default: trusted-ca
+    - name: caTrustConfigMapKey
+      type: string
+      description: The name of the key in the ConfigMap that contains the CA bundle data.
+      default: ca-bundle.crt
+    - name: image-url
+      description: Image URL.
+      type: string
+      default: ""
+    - name: image-digest
+      description: Digest of the image to scan.
+      type: string
+      default: ""
+  results:
+    - name: TEST_OUTPUT
+      description: Tekton task test output.
+  volumes:
+    - name: trusted-ca
+      configMap:
+        name: $(params.caTrustConfigMapName)
+        items:
+          - key: $(params.caTrustConfigMapKey)
+            path: ca-bundle.crt
+        optional: true
+  workspaces:
+    - name: workspace
+  steps:
+    - name: rh-crypto-scanner
+      image: images.paas.redhat.com/exd-sp-guild-security/rh-crypto-scanner-image@sha256:cb223e9275e179201960cd996c241c437b62c7769744d1963978cd679a745030
+      # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
+      # the cluster will set imagePullPolicy to IfNotPresent
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
+      volumeMounts:
+        - name: trusted-ca
+          mountPath: /mnt/trusted-ca
+          readOnly: true
+      env:
+        - name: TARGET_DIRS
+          value: $(params.TARGET_DIRS)
+        - name: SCAN_TIMEOUT
+          value: $(params.SCAN_TIMEOUT)
+        - name: BUILD_PLR_LOG_URL
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
+      script: |
+        #!/usr/bin/env bash
+        set -e
+
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo "Skipping SBOM generation"
+          exit 0
+        fi
+
+        echo "Using crypto-finder version:"
+        crypto-finder version
+
+        echo "Using opengrep version: $(opengrep  --version)"
+
+        OUTPUT_FILE="cbom.json"
+        SOURCE_CODE_DIR=$(workspaces.workspace.path)/source
+
+        # generate full path for each dirname separated by comma
+        declare -a ALL_TARGETS
+        IFS="," read -ra TARGET_ARRAY <<<"$TARGET_DIRS"
+        for d in "${TARGET_ARRAY[@]}"; do
+          potential_path="${SOURCE_CODE_DIR}/${d}"
+
+          resolved_path=$(realpath -m "$potential_path")
+
+          # ensure resolved path is still within SOURCE_CODE_DIR
+          if [[ "$resolved_path" == "$SOURCE_CODE_DIR"* ]]; then
+            ALL_TARGETS+=("$resolved_path")
+          else
+            echo "Error: path traversal attempt, '$potential_path' is outside '$SOURCE_CODE_DIR'"
+            exit 1
+          fi
+        done
+
+        echo "Running crypto scanner on the specified targets"
+        crypto-finder \
+          scan \
+          --no-remote-rules \
+          --rules-dir /usr/local/rules/crypto-rules \
+          --rules-dir /usr/local/rules/rh-crypto-rules \
+          --format cyclonedx \
+          --timeout ${SCAN_TIMEOUT} \
+          ${ALL_TARGETS[@]} > ${OUTPUT_FILE}
+
+        TEST_OUTPUT=$(echo "{\"result\":\"SUCCESS\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":0,\"successes\":1,\"warnings\":0}")
+        echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
+        echo "Task $(context.task.name) completed successfully."
+      computeResources:
+        limits:
+          cpu: "8"
+          memory: 4Gi
+        requests:
+          cpu: "1"
+          memory: 4Gi
+    - name: upload
+      image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
+      volumeMounts:
+        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+          name: trusted-ca
+          readOnly: true
+          subPath: ca-bundle.crt
+      env:
+        - name: IMAGE_URL
+          value: $(params.image-url)
+        - name: IMAGE_DIGEST
+          value: $(params.image-digest)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+
+        if [ -z "${IMAGE_URL}" ] || [ -z "${IMAGE_DIGEST}" ]; then
+          echo 'No image-url or image-digest param provided. Skipping upload.'
+          exit 0
+        fi
+
+        UPLOAD_FILES="cbom.json"
+        for UPLOAD_FILE in ${UPLOAD_FILES}; do
+          if [ ! -f "${UPLOAD_FILE}" ]; then
+            echo "No ${UPLOAD_FILE} exists. Skipping upload."
+            continue
+          fi
+
+          # Determine the media type based on the file extension
+          if [[ "${UPLOAD_FILE}" == *.json ]]; then
+            MEDIA_TYPE="application/json"
+          else
+            MEDIA_TYPE="application/sarif+json"
+          fi
+
+          echo "Selecting auth"
+          select-oci-auth "$IMAGE_URL" >"$HOME/auth.json"
+          echo "Attaching to ${IMAGE_URL}"
+          if ! retry oras attach --no-tty --registry-config "$HOME/auth.json" --artifact-type "${MEDIA_TYPE}" "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"; then
+            echo "Failed to attach ${UPLOAD_FILE} to ${IMAGE_URL}"
+            exit 1
+          fi
+        done
+      computeResources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
