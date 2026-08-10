@@ -23,7 +23,7 @@ additionalSteps:
   - at: 1
     name: fetch-extra-artifacts
     # Same pullspec as use-trusted-artifact (oras, select-oci-auth, retry, oras_opts.sh).
-    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:254989d35310c0998eb2ae60aa4703da842d99d82ed434fd5208cc9639d32969
+    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:0fa7f2a5cd87d6d47ac5dbedc81687805c8e6bc24c6aca620242e9134eed9633
     workingDir: /var/workdir
     volumeMounts:
       - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
