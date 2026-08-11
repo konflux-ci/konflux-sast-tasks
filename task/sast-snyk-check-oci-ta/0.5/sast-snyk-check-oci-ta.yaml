@@ -23,14 +23,16 @@ spec:
       type: string
       default: ""
     - name: EXTRA_ARTIFACT_FILTER
-      description: Extended regex matching org.opencontainers.image.title
-        paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
+      description: Extended regex matched against org.opencontainers.image.title
+        (and olot.layer.content.inlayerpath when present) when FETCH_EXTRA_ARTIFACTS=true.
       type: string
       default: (^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$
     - name: FETCH_EXTRA_ARTIFACTS
-      description: When "true", fetch script-like files from image-url@image-digest
-        (OCI artifact manifest) into /var/workdir/source alongside the restored
-        SOURCE_ARTIFACT. Skipped for standard container images.
+      description: When "true", fetch files matching EXTRA_ARTIFACT_FILTER
+        from image-url@image-digest into /var/workdir/source alongside the
+        restored SOURCE_ARTIFACT. Supports OCI artifacts (raw titled blobs)
+        and container images with titled layers (e.g. ModelCar/olot), extracting
+        matching tar layers without unpacking the full image.
       type: string
       default: "false"
     - name: IGNORE_FILE_PATHS
@@ -113,7 +115,7 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:0fa7f2a5cd87d6d47ac5dbedc81687805c8e6bc24c6aca620242e9134eed9633
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:dc542700b2e7ba806adfab360682d491c069bc2d6157d235c26adbe09480e26b
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
@@ -167,38 +169,120 @@ spec:
         echo "INFO: Fetching extra artifacts from OCI reference ${IMAGE_REF}"
 
         authfile="$(mktemp)"
-        trap 'rm -f "${authfile}"' EXIT
+        cleanup_paths=("${authfile}")
+        cleanup() {
+          rm -rf "${cleanup_paths[@]}"
+        }
+        trap cleanup EXIT
         /usr/local/bin/select-oci-auth.sh "${IMAGE_URL}" >"${authfile}"
 
         retry oras manifest fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_REF}" >"/tmp/manifest.json"
 
+        # Multi-arch index (e.g. modelcar build-image-index) → one platform manifest.
+        media_type="$(jq -r '.mediaType // ""' /tmp/manifest.json)"
+        if [[ "${media_type}" == "application/vnd.oci.image.index.v1+json" ]] || [[ "${media_type}" == "application/vnd.docker.distribution.manifest.list.v2+json" ]]; then
+          child_digest="$(jq -r '
+            (.manifests // []) as $m
+            | ($m | map(select(.platform.architecture == "amd64" and ((.platform.os // "linux") == "linux"))) | .[0].digest)
+              // ($m | map(select((.platform.os // "linux") == "linux")) | .[0].digest)
+              // ($m[0].digest)
+              // empty
+          ' /tmp/manifest.json)"
+          if [[ -z "${child_digest}" || "${child_digest}" == "null" ]]; then
+            echo "ERROR: image index has no manifests to resolve"
+            exit 1
+          fi
+          echo "INFO: Resolving image index to ${child_digest}"
+          retry oras manifest fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${child_digest}" >"/tmp/manifest.json"
+        fi
+
         config_media_type="$(jq -r '.config.mediaType // ""' /tmp/manifest.json)"
+        is_container_image=false
         if [[ "${config_media_type}" == "application/vnd.oci.image.config.v1+json" ]] || [[ "${config_media_type}" == "application/vnd.docker.container.image.v1+json" ]]; then
-          echo "INFO: Reference points to a container image config (${config_media_type}); skipping extra artifact fetch"
-          exit 0
+          is_container_image=true
+          echo "INFO: Reference is a container image (${config_media_type}); extracting titled layers matching EXTRA_ARTIFACT_FILTER"
         fi
 
         mkdir -p /var/workdir/source
-
         fetched_count=0
-        while IFS=$'\t' read -r digest rel_path; do
-          [[ -n "${rel_path}" ]] || continue
-          if ! printf '%s\n' "${rel_path}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}"; then
-            continue
-          fi
 
-          dest_path="/var/workdir/source/${rel_path}"
-          resolved_dest="$(realpath -m "${dest_path}")"
+        path_allowed() {
+          local rel_path="$1"
+          local resolved_dest
+          resolved_dest="$(realpath -m "/var/workdir/source/${rel_path}")"
           if [[ ! "${resolved_dest}" == /var/workdir/source/* ]]; then
-            echo "WARN: Skipping path outside source root: ${rel_path}"
-            continue
+            echo "WARN: Skipping path outside source root: ${rel_path}" >&2
+            return 1
           fi
+          printf '%s\n' "${resolved_dest}"
+        }
 
-          mkdir -p "$(dirname "${resolved_dest}")"
-          echo "INFO: Fetching blob ${digest} -> ${rel_path}"
-          retry oras blob fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${digest}" --output "${resolved_dest}"
-          fetched_count=$((fetched_count + 1))
-        done < <(jq -r '.layers[] | [.digest, (.annotations["org.opencontainers.image.title"] // "")] | @tsv' /tmp/manifest.json)
+        if [[ "${is_container_image}" == "true" ]]; then
+          # ModelCar/olot (and similar) store one file per titled tar layer. Fetch only
+          # matching layers — skip base-image layers (no title) and huge weight blobs.
+          while IFS=$'\t' read -r digest media_type title inlayer_path; do
+            [[ -n "${title}" ]] || continue
+            match_path="${inlayer_path:-${title}}"
+            match_path="${match_path#/}"
+            if ! printf '%s\n' "${match_path}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}" &&
+                 ! printf '%s\n' "${title}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}"; then
+              continue
+            fi
+
+            tmp_blob="$(mktemp)"
+            tmp_dir="$(mktemp -d)"
+            cleanup_paths+=("${tmp_blob}" "${tmp_dir}")
+            echo "INFO: Fetching layer ${digest} (${title}) for extraction"
+            retry oras blob fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${digest}" --output "${tmp_blob}"
+
+            # olot model files are uncompressed tar; modelcard layers are tar+gzip.
+            if [[ "${media_type}" == *gzip* ]] || [[ "${media_type}" == *tar+gzip* ]]; then
+              tar -xzf "${tmp_blob}" -C "${tmp_dir}"
+            else
+              tar -xf "${tmp_blob}" -C "${tmp_dir}"
+            fi
+
+            while IFS= read -r -d '' extracted; do
+              rel_path="${extracted#"${tmp_dir}"/}"
+              rel_path="${rel_path#./}"
+              [[ -n "${rel_path}" ]] || continue
+              if ! dest_path="$(path_allowed "${rel_path}")"; then
+                continue
+              fi
+              mkdir -p "$(dirname "${dest_path}")"
+              cp -a "${extracted}" "${dest_path}"
+              echo "INFO: Extracted ${rel_path}"
+              fetched_count=$((fetched_count + 1))
+            done < <(find "${tmp_dir}" -type f -print0)
+
+            rm -rf "${tmp_blob}" "${tmp_dir}"
+          done < <(jq -r '
+            (.layers // [])[]
+            | [
+                .digest,
+                (.mediaType // ""),
+                (.annotations["org.opencontainers.image.title"] // ""),
+                (.annotations["olot.layer.content.inlayerpath"] // "")
+              ]
+            | @tsv
+          ' /tmp/manifest.json)
+        else
+          while IFS=$'\t' read -r digest rel_path; do
+            [[ -n "${rel_path}" ]] || continue
+            if ! printf '%s\n' "${rel_path}" | grep -Eq "${EXTRA_ARTIFACT_FILTER}"; then
+              continue
+            fi
+
+            if ! dest_path="$(path_allowed "${rel_path}")"; then
+              continue
+            fi
+
+            mkdir -p "$(dirname "${dest_path}")"
+            echo "INFO: Fetching blob ${digest} -> ${rel_path}"
+            retry oras blob fetch "${oras_opts[@]}" --registry-config "${authfile}" "${IMAGE_URL}@${digest}" --output "${dest_path}"
+            fetched_count=$((fetched_count + 1))
+          done < <(jq -r '(.layers // [])[] | [.digest, (.annotations["org.opencontainers.image.title"] // "")] | @tsv' /tmp/manifest.json)
+        fi
 
         if [[ "${fetched_count}" -eq 0 ]]; then
           echo "INFO: No files matched EXTRA_ARTIFACT_FILTER"

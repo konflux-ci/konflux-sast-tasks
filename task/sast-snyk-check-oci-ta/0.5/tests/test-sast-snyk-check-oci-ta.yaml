@@ -6,8 +6,9 @@ metadata:
 spec:
   description: |
     Test for sast-snyk-check-oci-ta. FETCH_EXTRA_ARTIFACTS is false, so
-    fetch-extra-artifacts exits without fetching script-like OCI artifacts. The Snyk
-    scan still runs against trusted source from git-clone-oci-ta.
+    fetch-extra-artifacts exits without fetching OCI artifact blobs or titled
+    container layers. The Snyk scan still runs against trusted source from
+    git-clone-oci-ta.
   workspaces:
     - name: tests-workspace
   tasks:
