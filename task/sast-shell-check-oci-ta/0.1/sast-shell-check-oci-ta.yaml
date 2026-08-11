@@ -270,6 +270,7 @@ spec:
         echo "ShellCheck results have been saved to $OUTPUT_FILE"
 
         csgrep --mode=evtstat "$OUTPUT_FILE"
+        csgrep "$OUTPUT_FILE"
         csgrep --mode=sarif "$OUTPUT_FILE" >shellcheck-results.sarif
 
         TEST_OUTPUT=
