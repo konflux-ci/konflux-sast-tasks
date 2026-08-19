@@ -1,0 +1,28 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-snyk-check-oci-ta-container-layers
+spec:
+  description: |
+    Unit-test fetch-extra-artifacts titled-layer extract/filter/index-resolve
+    (the FETCH_EXTRA_ARTIFACTS=true container-image path). Does not call Snyk.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: check-container-layer-extract
+      taskSpec:
+        volumes:
+          - name: tests
+            configMap:
+              name: snyk-fetch-extra-artifacts-test
+        steps:
+          - name: check
+            image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+            volumeMounts:
+              - name: tests
+                mountPath: /tests
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              bash /tests/check-container-layer-extract.sh
