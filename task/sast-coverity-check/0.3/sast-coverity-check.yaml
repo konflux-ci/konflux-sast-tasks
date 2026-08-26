@@ -1097,7 +1097,6 @@ spec:
         "${CMD[@]}" coverity-results-raw.json \
           | tee coverity-results.json \
           | csgrep --mode=evtstat
-        csgrep coverity-results.json
       fi
 
       # convert the scan results into SARIF
