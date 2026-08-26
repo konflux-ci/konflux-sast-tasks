@@ -196,6 +196,7 @@ spec:
         fi
 
         csgrep --mode=evtstat processed_sast_unicode_check_out.json
+        csgrep processed_sast_unicode_check_out.json
 
         if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
           KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"

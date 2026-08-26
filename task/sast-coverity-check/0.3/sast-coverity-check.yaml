@@ -1062,6 +1062,7 @@ spec:
         --set-scan-prop cov-scanned-lines:"${LINES_OF_CODE}") \
         | tee coverity-results-raw.json \
         | csgrep --mode=evtstat
+      csgrep coverity-results-raw.json
 
       if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
         # Set KFP_GIT_URL to https://gitlab.cee.redhat.com/osh/known-false-positives.git for internal Konflux instances
@@ -1096,6 +1097,7 @@ spec:
         "${CMD[@]}" coverity-results-raw.json \
           | tee coverity-results.json \
           | csgrep --mode=evtstat
+        csgrep coverity-results.json
       fi
 
       # convert the scan results into SARIF

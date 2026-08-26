@@ -211,6 +211,7 @@ spec:
             fi
             echo "INFO: Results after filtering:"
             (set -x && csgrep --mode=evtstat filtered_sast_gitleaks_check_out.json)
+            csgrep filtered_sast_gitleaks_check_out.json
           fi
 
           csgrep --mode=sarif filtered_sast_gitleaks_check_out.json  > sast_gitleaks_check_out.sarif
