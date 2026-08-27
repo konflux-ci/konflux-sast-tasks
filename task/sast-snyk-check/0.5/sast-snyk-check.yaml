@@ -288,6 +288,7 @@ spec:
 
           echo "INFO: Initial results:"
           csgrep --mode=evtstat sast_snyk_check_out_all_findings.json
+          csgrep sast_snyk_check_out_all_findings.json
 
           if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
             KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
@@ -337,6 +338,7 @@ spec:
             fi
             echo "INFO: Results after filtering:"
             (set -x && csgrep --mode=evtstat filtered_sast_snyk_check_out.json)
+            csgrep filtered_sast_snyk_check_out.json
           fi
 
           # Generation of scan stats
