@@ -193,7 +193,8 @@ additionalSteps:
       fi
     computeResources:
       limits:
+        cpu: 100m
         memory: 2Gi
       requests:
         cpu: 100m
-        memory: 512Mi
+        memory: 2Gi
