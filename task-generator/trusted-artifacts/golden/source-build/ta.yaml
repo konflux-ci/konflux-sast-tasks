@@ -62,6 +62,7 @@ spec:
         limits:
           memory: 4Gi
         requests:
+          cpu: 50m
           memory: 4Gi
     - name: get-base-images
       image: quay.io/konflux-ci/appstudio-utils:48c311af02858e2422d6229600e9959e496ddef1@sha256:91ddd999271f65d8ec8487b10f3dd378f81aa894e11b9af4d10639fd52bba7e8
