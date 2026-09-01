@@ -16,7 +16,7 @@ spec:
           - name: name
             value: init
           - name: bundle
-            value: quay.io/konflux-ci/tekton-catalog/task-init:0.4.3@sha256:15d3d4a7e5c70b068103a9d4c6ba2e049db8896709fc45c0bd4be49c134b0989
+            value: quay.io/konflux-ci/tekton-catalog/task-init:0.4.3@sha256:5f687152ab0661f84830877de93a8ec45cb0b756f71b24ac55133d03a4007936
           - name: kind
             value: task
       params:
@@ -37,7 +37,7 @@ spec:
         resolver: git
         params:
           - name: url
-            value: https://github.com/konflux-ci/build-pipeline-tasks.git
+            value: https://github.com/konflux-ci/container-build-catalog.git
           - name: revision
             value: main
           - name: pathInRepo

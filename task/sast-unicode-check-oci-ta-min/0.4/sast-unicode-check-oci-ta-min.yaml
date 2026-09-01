@@ -70,7 +70,7 @@ spec:
   - args:
     - use
     - $(params.SOURCE_ARTIFACT)=/var/workdir/source
-    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:0fa7f2a5cd87d6d47ac5dbedc81687805c8e6bc24c6aca620242e9134eed9633
+    image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:7b4f5bbf8b8aa663beaf18bfef4fd16ba1cb5ce846d1fc776a64b312c52ee28c
     name: use-trusted-artifact
     volumeMounts:
     - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
@@ -182,6 +182,7 @@ spec:
       fi
 
       csgrep --mode=evtstat processed_sast_unicode_check_out.json
+      csgrep processed_sast_unicode_check_out.json
 
       if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
         KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
