@@ -115,7 +115,7 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:7b4f5bbf8b8aa663beaf18bfef4fd16ba1cb5ce846d1fc776a64b312c52ee28c
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa0807b76807f245bb19f229ec7e76b25f9458d23934d9d1ec0721b8fb50d8df
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
@@ -130,7 +130,7 @@ spec:
         requests:
           memory: 4Gi
     - name: fetch-extra-artifacts
-      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:7b4f5bbf8b8aa663beaf18bfef4fd16ba1cb5ce846d1fc776a64b312c52ee28c
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:aa0807b76807f245bb19f229ec7e76b25f9458d23934d9d1ec0721b8fb50d8df
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
@@ -343,7 +343,7 @@ spec:
           cpu: 100m
           memory: 512Mi
     - name: sast-snyk-check
-      image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+      image: quay.io/konflux-ci/konflux-test:v1.5.7@sha256:b87cecff1a5feee85194b7af0ce6cc507385391d5519816860facd60767d14e6
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /etc/secrets
@@ -649,7 +649,7 @@ spec:
           cpu: "1"
           memory: 6Gi
     - name: upload
-      image: quay.io/konflux-ci/oras:latest@sha256:b38167deed2c10441fc9b810055ab1763a4dfb14b1a2144b6b37a9fa7d806a2a
+      image: quay.io/konflux-ci/oras:latest@sha256:1cc659b4d30536ec98300ac551739ef36dee345a7dcfe06129fd78abdc3688ac
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
