@@ -22,6 +22,42 @@ tash() {
   "${tashbin}" "$@"
 }
 
+# Keep additionalSteps[].script in recipe.yaml identical to a sibling
+# fetch-extra-artifacts.sh when that file exists (unit-tested helper).
+sync_fetch_extra_artifacts_script() {
+  local recipe_path="$1"
+  local script_path="$2"
+  python3 - "${recipe_path}" "${script_path}" <<'PY'
+from pathlib import Path
+import sys
+
+recipe_path, script_path = Path(sys.argv[1]), Path(sys.argv[2])
+script = script_path.read_text()
+if not script.endswith("\n"):
+    script += "\n"
+indented = "".join(
+    "\n" if line == "\n" else f"      {line}"
+    for line in script.splitlines(keepends=True)
+)
+text = recipe_path.read_text()
+marker = "    name: fetch-extra-artifacts\n"
+start = text.find(marker)
+if start < 0:
+    sys.exit(f"ERROR: {recipe_path}: fetch-extra-artifacts step not found")
+key = "    script: |\n"
+sidx = text.find(key, start)
+if sidx < 0:
+    sys.exit(f"ERROR: {recipe_path}: script: | not found under fetch-extra-artifacts")
+body = sidx + len(key)
+end = text.find("\n    computeResources:", body)
+if end < 0:
+    sys.exit(f"ERROR: {recipe_path}: computeResources after script not found")
+updated = text[:body] + indented + text[end + 1 :]
+if updated != text:
+    recipe_path.write_text(updated)
+PY
+}
+
 declare -i changes=0
 emit() {
   if [ "${GITHUB_ACTIONS:-false}" == "true" ]; then
@@ -42,6 +78,10 @@ fi
 cd "${TASK_DIR}"
 for recipe_path in **/recipe.yaml; do
     task_path="${recipe_path%/recipe.yaml}/$(basename "${recipe_path%/*/*}").yaml"
+    script_src="${recipe_path%/recipe.yaml}/fetch-extra-artifacts.sh"
+    if [[ -f "${script_src}" ]]; then
+        sync_fetch_extra_artifacts_script "${TASK_DIR}/${recipe_path}" "${TASK_DIR}/${script_src}"
+    fi
     sponge=$(tash "${TASK_DIR}/${recipe_path}")
     echo "${sponge}" > "${task_path}"
     readme_path="${recipe_path%/recipe.yaml}/README.md"
@@ -51,6 +91,9 @@ for recipe_path in **/recipe.yaml; do
     fi
     if ! git diff --quiet HEAD "${readme_path}"; then
         emit "task/${readme_path}" "${msg}"
+    fi
+    if [[ -f "${script_src}" ]] && ! git diff --quiet HEAD "${recipe_path}"; then
+        emit "task/${recipe_path}" "${msg}"
     fi
 done
 
