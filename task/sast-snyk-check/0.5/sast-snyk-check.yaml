@@ -88,10 +88,10 @@ spec:
     - name: sast-snyk-check
       computeResources:
         limits:
-          memory: 6Gi
+          memory: 3Gi
         requests:
           cpu: "1"
-          memory: 6Gi
+          memory: 3Gi
       image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
       # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
       # the cluster will set imagePullPolicy to IfNotPresent
@@ -396,10 +396,10 @@ spec:
     - name: upload
       computeResources:
         limits:
-          memory: 256Mi
+          memory: 64Mi
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 50m
+          memory: 64Mi
       image: quay.io/konflux-ci/oras:latest@sha256:b38167deed2c10441fc9b810055ab1763a4dfb14b1a2144b6b37a9fa7d806a2a
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       volumeMounts:

@@ -126,6 +126,7 @@ spec:
         limits:
           memory: 4Gi
         requests:
+          cpu: 50m
           memory: 4Gi
     - name: fetch-extra-artifacts
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:7b4f5bbf8b8aa663beaf18bfef4fd16ba1cb5ce846d1fc776a64b312c52ee28c
@@ -207,10 +208,10 @@ spec:
         fi
       computeResources:
         limits:
-          memory: 2Gi
+          memory: 64Mi
         requests:
-          cpu: 100m
-          memory: 512Mi
+          cpu: 50m
+          memory: 64Mi
     - name: sast-snyk-check
       image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
       workingDir: /var/workdir/source
@@ -513,10 +514,10 @@ spec:
         echo "${TEST_OUTPUT:-${ERROR_OUTPUT}}" | tee "$(results.TEST_OUTPUT.path)"
       computeResources:
         limits:
-          memory: 6Gi
+          memory: 3Gi
         requests:
           cpu: "1"
-          memory: 6Gi
+          memory: 3Gi
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:b38167deed2c10441fc9b810055ab1763a4dfb14b1a2144b6b37a9fa7d806a2a
       workingDir: /var/workdir/source
@@ -558,7 +559,7 @@ spec:
         done
       computeResources:
         limits:
-          memory: 256Mi
+          memory: 64Mi
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 50m
+          memory: 64Mi
