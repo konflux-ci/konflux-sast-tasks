@@ -35,7 +35,7 @@ spec:
           - name: workspace
         steps:
           - name: create-bad-shell-scripts
-            image: quay.io/konflux-ci/konflux-test:v1.5.7@sha256:b87cecff1a5feee85194b7af0ce6cc507385391d5519816860facd60767d14e6
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
             script: |
               #!/usr/bin/env bash
               set -eu
@@ -123,7 +123,7 @@ spec:
           - name: workspace
         steps:
           - name: verify-test-output
-            image: quay.io/konflux-ci/konflux-test:v1.5.7@sha256:b87cecff1a5feee85194b7af0ce6cc507385391d5519816860facd60767d14e6
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
             env:
               - name: TEST_OUTPUT
                 value: $(params.test-output)
@@ -152,7 +152,7 @@ spec:
 
               echo "PASS: TEST_OUTPUT shows FAILURE with $failures findings as expected"
           - name: verify-sarif-findings
-            image: quay.io/konflux-ci/konflux-test:v1.5.7@sha256:b87cecff1a5feee85194b7af0ce6cc507385391d5519816860facd60767d14e6
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
             script: |
               #!/usr/bin/env bash
               set -eu
