@@ -94,9 +94,11 @@ spec:
               tar -cf /work/keep.tar -C /work/layers/keep run.py
               printf '{"architecture":"amd64","os":"linux","rootfs":{"type":"layers","diff_ids":[]}}' > /work/config.json
 
+              # Blob push takes a repository, not a tag. :image is parsed as a digest.
+              repo="${IMAGE%:*}"
               push_blob() {
                 local file="$1"
-                oras blob push --insecure --no-tty --descriptor "${IMAGE}" "${file}" | jq -r .digest
+                oras blob push --insecure --no-tty --descriptor "${repo}" "${file}" | jq -r .digest
               }
               keep_digest="$(push_blob /work/keep.tar)"
               config_digest="$(push_blob /work/config.json)"
