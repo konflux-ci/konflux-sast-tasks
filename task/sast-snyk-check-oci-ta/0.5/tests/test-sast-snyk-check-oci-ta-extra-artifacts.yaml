@@ -1,0 +1,176 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-snyk-check-oci-ta-extra-artifacts
+spec:
+  description: |
+    FETCH_EXTRA_ARTIFACTS=true against a container image whose only scannable
+    source is a titled layer. Git/source artifact has no findings; Snyk must
+    report the known finding from the image-only file.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: init
+      taskRef:
+        resolver: bundles
+        params:
+          - name: name
+            value: init
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-init:0.4.3@sha256:4be9343579d91c7b501cafe966cff59a601dfeca903c476e3763dd8d7599b900
+          - name: kind
+            value: task
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+    - name: mock-inputs
+      runAfter:
+        - init
+      params:
+        - name: ociStorage
+          value: registry-service.kind-registry/sast-snyk-check-oci-ta-extra:source
+        - name: image
+          value: registry-service.kind-registry/sast-snyk-check-oci-ta-extra:image
+        - name: caTrustConfigMapName
+          value: trusted-ca
+        - name: caTrustConfigMapKey
+          value: ca-bundle.crt
+      taskSpec:
+        results:
+          - name: SOURCE_ARTIFACT
+            type: string
+          - name: IMAGE_URL
+            type: string
+          - name: IMAGE_DIGEST
+            type: string
+        params:
+          - name: ociStorage
+          - name: image
+          - name: caTrustConfigMapName
+          - name: caTrustConfigMapKey
+        volumes:
+          - name: workdir
+            emptyDir: {}
+          - name: trusted-ca
+            configMap:
+              items:
+                - key: $(params.caTrustConfigMapKey)
+                  path: ca-bundle.crt
+              name: $(params.caTrustConfigMapName)
+              optional: true
+        stepTemplate:
+          volumeMounts:
+            - name: workdir
+              mountPath: /work
+            - name: trusted-ca
+              mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+              subPath: ca-bundle.crt
+              readOnly: true
+        steps:
+          - name: mock-source-and-image
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:15c5eeb451924ddfc9d8680319130fe277df7850728d5c37f13ae3eb9d607249
+            env:
+              - name: IMAGE
+                value: $(params.image)
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+
+              mkdir -p /work/source /work/layers/keep
+              echo "no findings in git source" > /work/source/README.md
+
+              # Command injection Snyk Code reports as an important finding.
+              printf '%s\n' \
+                'import os' \
+                'from flask import Flask, request' \
+                '' \
+                'app = Flask(__name__)' \
+                '' \
+                '@app.route("/run")' \
+                'def run():' \
+                '    os.system(request.args.get("cmd"))' \
+                > /work/layers/keep/run.py
+              tar -cf /work/keep.tar -C /work/layers/keep run.py
+              printf '{"architecture":"amd64","os":"linux","rootfs":{"type":"layers","diff_ids":[]}}' > /work/config.json
+
+              push_blob() {
+                local file="$1"
+                oras blob push --insecure --no-tty --descriptor "${IMAGE}" "${file}" | jq -r .digest
+              }
+              keep_digest="$(push_blob /work/keep.tar)"
+              config_digest="$(push_blob /work/config.json)"
+              keep_size="$(wc -c < /work/keep.tar | tr -d ' ')"
+              config_size="$(wc -c < /work/config.json | tr -d ' ')"
+
+              cat > /work/manifest.json <<EOF
+              {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "config": {
+                  "mediaType": "application/vnd.oci.image.config.v1+json",
+                  "digest": "${config_digest}",
+                  "size": ${config_size}
+                },
+                "layers": [
+                  {
+                    "mediaType": "application/vnd.oci.image.layer.v1.tar",
+                    "digest": "${keep_digest}",
+                    "size": ${keep_size},
+                    "annotations": {"org.opencontainers.image.title": "run.py"}
+                  }
+                ]
+              }
+              EOF
+              digest="$(oras manifest push --insecure --no-tty --descriptor "${IMAGE}" /work/manifest.json | jq -r .digest)"
+              echo -n "${IMAGE%:*}" > "$(results.IMAGE_URL.path)"
+              echo -n "${digest}" > "$(results.IMAGE_DIGEST.path)"
+          - name: create-trusted-artifact
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:15c5eeb451924ddfc9d8680319130fe277df7850728d5c37f13ae3eb9d607249
+            env:
+              - name: ORAS_OPTIONS
+                value: --insecure
+              - name: CA_FILE
+                value: /etc/pki/tls/certs/ca-custom-bundle.crt
+            args:
+              - create
+              - --store
+              - $(params.ociStorage)
+              - $(results.SOURCE_ARTIFACT.path)=/work/source
+    - name: scan-with-snyk
+      runAfter:
+        - mock-inputs
+      taskRef:
+        name: sast-snyk-check-oci-ta
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.mock-inputs.results.SOURCE_ARTIFACT)
+        - name: FETCH_EXTRA_ARTIFACTS
+          value: "true"
+        - name: image-url
+          value: $(tasks.mock-inputs.results.IMAGE_URL)
+        - name: image-digest
+          value: $(tasks.mock-inputs.results.IMAGE_DIGEST)
+    - name: check-result
+      runAfter:
+        - scan-with-snyk
+      params:
+        - name: results
+          value: $(tasks.scan-with-snyk.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+          - name: results
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+            env:
+            - name: RESULTS
+              value: $(params.results)
+            script: |
+              #!/bin/bash
+
+              set -e
+
+              echo "$RESULTS"
+              echo -n "Expected FAILURE from image-only run.py: "
+              echo "$RESULTS" | jq -e '.result == "FAILURE" and .failures >= 1'
