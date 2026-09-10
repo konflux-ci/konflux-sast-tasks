@@ -69,7 +69,8 @@ spec:
               readOnly: true
         steps:
           - name: mock-source-and-image
-            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:15c5eeb451924ddfc9d8680319130fe277df7850728d5c37f13ae3eb9d607249
+            # Same oras as extract-titled-layers tests; BTA's oras has no --no-tty.
+            image: quay.io/konflux-ci/task-runner:3.1.2@sha256:e272c1e1c60a4ecc72ff9c8d65bc48da534de6f1ce0d5aba79db3ac532d11c35
             env:
               - name: IMAGE
                 value: $(params.image)
