@@ -64,8 +64,13 @@ for recipe_path in **/recipe.yaml; do
     task_path="${recipe_path%/*}/${task_name}.yaml"
     sponge=$(tash "${TASK_DIR}/${recipe_path}")
     echo "${sponge}" > "${task_path}"
+    readme_path="${recipe_path%/recipe.yaml}/README.md"
+    "${ROOT_DIR}/hack/generate-readme.sh" "${task_path}" "${readme_path}"
     if ! git diff --quiet HEAD "${task_path}"; then
         emit "task/${task_path}" "${msg}"
+    fi
+    if ! git diff --quiet HEAD "${readme_path}"; then
+        emit "task/${readme_path}" "${msg}"
     fi
 
     recipe_dir="${TASK_DIR}/${recipe_path%/*}"
