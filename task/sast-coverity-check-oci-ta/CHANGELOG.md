@@ -11,7 +11,7 @@ If that's not something you ever plan to do, consider removing this section.
 
 *Nothing yet.*
 
-## 0.3
+## 0.3.0
 
 ### Added
 

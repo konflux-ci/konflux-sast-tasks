@@ -6,7 +6,7 @@
 # Task version
 - op: replace
   path: /metadata/labels/app.kubernetes.io~1version
-  value: "0.3"
+  value: "0.3.0"
 
 # Task description
 - op: replace
