@@ -18,7 +18,9 @@ command -v go &> /dev/null || { echo Please install golang to run this tool; exi
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 TASK_DIR="$(realpath "${ROOT_DIR}/task")"
-: "${TRUSTED_ARTIFACTS=github.com/konflux-ci/build-definitions/task-generator/trusted-artifacts@latest}"
+# The repository generator retains resource requirements for generated TA steps.
+# Keep an explicit override for testing a newer upstream generator when desired.
+: "${TRUSTED_ARTIFACTS=${ROOT_DIR}/task-generator/trusted-artifacts}"
 
 tashdir="$(mktemp -d)"
 trap 'rm -rf "${tashdir}"' EXIT
