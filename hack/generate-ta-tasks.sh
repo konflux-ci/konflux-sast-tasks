@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# <TEMPLATED FILE!>
+# This file comes from the templates at https://github.com/konflux-ci/task-repo-shared-ci.
+# Please consider sending a PR upstream instead of editing the file directly.
+# See the SHARED-CI.md document in this repo for more details.
+
 set -o errexit
 set -o errtrace
 set -o nounset
@@ -11,23 +16,37 @@ shopt -s globstar nullglob
 command -v go &> /dev/null || { echo Please install golang to run this tool; exit 1; }
 [[ "$(go env GOVERSION)" == @(go1|go1.[1-9]+(|.*|rc*|beta*)|go1.1[0-9]+(|.*|rc*|beta*)|go1.20*) ]] && { echo Please install golang 1.21.0 or newer; exit 1; }
 
-HACK_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 TASK_DIR="$(realpath "${ROOT_DIR}/task")"
+: "${TRUSTED_ARTIFACTS=github.com/konflux-ci/build-definitions/task-generator/trusted-artifacts@latest}"
 
-tashbin="$(mktemp --dry-run)"
-GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -C "${ROOT_DIR}/task-generator/trusted-artifacts" -o "${tashbin}"
-trap 'rm "${tashbin}"' EXIT
+tashdir="$(mktemp -d)"
+trap 'rm -rf "${tashdir}"' EXIT
+if [[ -d "${TRUSTED_ARTIFACTS}" ]]; then
+    tashbin=${tashdir}/trusted-artifacts
+    GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -C "${TRUSTED_ARTIFACTS}" -o "${tashbin}"
+else
+    GOTOOLCHAIN=auto GOSUMDB=sum.golang.org GOBIN="$tashdir" go install "${TRUSTED_ARTIFACTS}"
+    bin=("${tashdir}"/*)
+    if [[ ${#bin[@]} -ne 1 ]]; then
+      echo "Expected exactly one executable, got ${#bin[@]}: ${bin[*]}" >&2
+      exit 1
+    fi
+    tashbin=${bin[0]}
+fi
+
 tash() {
   "${tashbin}" "$@"
 }
 
 declare -i changes=0
 emit() {
+  local file=$1
+  local msg=$2
   if [ "${GITHUB_ACTIONS:-false}" == "true" ]; then
-    printf "::error file=%s,line=1,col=0::%s\n" "$1" "$2"
+    printf "::error file=%s,line=1,col=0::%s\n" "$file" "$msg"
   else
-    printf "INFO: \033[1m%s\033[0m %s\n" "$1" "$2"
+    printf "INFO: \033[1m%s\033[0m %s\n" "$file" "$msg"
   fi
   changes=$((changes + 1))
 }
@@ -36,21 +55,44 @@ msg="File is out of date and has been updated"
 if [ "${GITHUB_ACTIONS:-false}" == "true" ]; then
   # shellcheck disable=SC2016
   msg='File is out of date, run `hack/generate-ta-tasks.sh` and include the updated file with your changes.'
-  msg+=' Or run ./hack/generate-everything.sh to run all the generators at once.'
 fi
 
 cd "${TASK_DIR}"
 for recipe_path in **/recipe.yaml; do
-    task_path="${recipe_path%/recipe.yaml}/$(basename "${recipe_path%/*/*}").yaml"
+    # tasks are stored at task/${task_name}/...
+    task_name="${recipe_path%%/*}"
+    task_path="${recipe_path%/*}/${task_name}.yaml"
     sponge=$(tash "${TASK_DIR}/${recipe_path}")
     echo "${sponge}" > "${task_path}"
-    readme_path="${recipe_path%/recipe.yaml}/README.md"
-    "${HACK_DIR}/generate-readme.sh" "${task_path}" "${readme_path}"
     if ! git diff --quiet HEAD "${task_path}"; then
         emit "task/${task_path}" "${msg}"
     fi
-    if ! git diff --quiet HEAD "${readme_path}"; then
-        emit "task/${readme_path}" "${msg}"
+
+    recipe_dir="${TASK_DIR}/${recipe_path%/*}"
+    base=$(yq -r '.base' "${recipe_dir}/recipe.yaml")
+    base_dir="$(cd "${recipe_dir}" && cd "$(dirname "${base}")" && pwd)"
+    base_yaml="${base_dir}/$(basename "${base}")"
+    version=$(yq -r '.metadata.labels."app.kubernetes.io/version"' "${base_yaml}")
+    src="${base_dir}/migrations/${version}.sh"
+    dst="${recipe_dir}/migrations/${version}.sh"
+    # Sync marker in the base migration (see create-task-migration.sh / SHARED-CI.md):
+    #   # generate-ta-tasks: sync-oci-ta-migration=true
+    #   # generate-ta-tasks: sync-oci-ta-migration=false
+    if [[ -f "${src}" ]]; then
+        sync_migration=false
+        if [[ ! -f "${dst}" ]]; then
+            sync_migration=true
+        elif grep -qF '# generate-ta-tasks: sync-oci-ta-migration=true' "${src}"; then
+            sync_migration=true
+        fi
+        if [[ "${sync_migration}" == true ]]; then
+            mkdir -p "${recipe_dir}/migrations"
+            cp "${src}" "${dst}"
+            if ! git diff --quiet HEAD -- "${dst}" \
+                || [[ -n "$(git ls-files --others --exclude-standard -- "${dst}")" ]]; then
+                emit "task/${recipe_path%/*}/migrations/${version}.sh" "${msg}"
+            fi
+        fi
     fi
 done
 
