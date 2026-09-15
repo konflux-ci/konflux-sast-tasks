@@ -69,7 +69,7 @@ spec:
               readOnly: true
         steps:
           - name: mock-source-and-image
-            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:15c5eeb451924ddfc9d8680319130fe277df7850728d5c37f13ae3eb9d607249
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:dba00133c3f4d6a7b071c6b83977729da2c4b7469ee5e3e9acdf4ef6d1c6b3e2
             env:
               - name: IMAGE
                 value: $(params.image)
@@ -128,7 +128,7 @@ spec:
               echo -n "${IMAGE%:*}" > "$(results.IMAGE_URL.path)"
               echo -n "${digest}" > "$(results.IMAGE_DIGEST.path)"
           - name: create-trusted-artifact
-            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:15c5eeb451924ddfc9d8680319130fe277df7850728d5c37f13ae3eb9d607249
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:dba00133c3f4d6a7b071c6b83977729da2c4b7469ee5e3e9acdf4ef6d1c6b3e2
             env:
               - name: ORAS_OPTIONS
                 value: --insecure
