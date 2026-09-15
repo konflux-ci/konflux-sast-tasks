@@ -1,7 +1,7 @@
 {
   "template": "https://github.com/konflux-ci/task-repo-shared-ci",
-  "commit": "1308e54ac438a161f03c07a3ecef5f6f47a7a43a",
-  "checkout": "1308e54ac438a161f03c07a3ecef5f6f47a7a43a",
+  "commit": "860cc24248939d8356baaef76478e0ed9ba24a03",
+  "checkout": null,
   "context": {
     "cookiecutter": {
       "repo_root": ".",
@@ -9,7 +9,7 @@
         "*"
       ],
       "_template": "https://github.com/konflux-ci/task-repo-shared-ci",
-      "_commit": "1308e54ac438a161f03c07a3ecef5f6f47a7a43a"
+      "_commit": "860cc24248939d8356baaef76478e0ed9ba24a03"
     }
   },
   "directory": null
