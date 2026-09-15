@@ -1,0 +1,51 @@
+# yamllint disable-file
+
+# <TEMPLATED FILE!>
+# This file comes from the templates at https://github.com/konflux-ci/task-repo-shared-ci.
+# Please consider sending a PR upstream instead of editing the file directly.
+# See the SHARED-CI.md document in this repo for more details.
+
+name: "Lint Tekton Tasks"
+
+'on':
+  pull_request:
+    branches: [main]
+    paths:
+      - 'task/**/*.yaml'
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  lint-disallowed-params:
+    name: "Check for insecure params in tasks"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout this repository"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "Install yq"
+        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
+        with:
+          # Version from https://github.com/mikefarah/yq/releases
+          version: 'v4.47.1'
+
+      - name: "Run linter script"
+        id: linter-script
+        run: |
+          #!/bin/bash
+
+          FAILED_TASKS=()
+
+          while read -r task; do
+            # shellcheck disable=SC2016  # we don't want to expand $(params)
+            if yq '.spec?.steps[] | .script' "$task" | grep -q '\$(params\.'; then
+              FAILED_TASKS+=("$task")
+            fi
+          done < <(find task -name '*.yaml')
+
+          if [ "${#FAILED_TASKS[@]}" -gt 0 ]; then
+            echo "Tasks contains params in script section (https://github.com/tektoncd/catalog/blob/main/recommendations.md#dont-use-interpolation-in-scripts-or-string-arguments)"
+            echo "This is disallowed as it can lead to arbitrary code execution"
+            printf '%s\n' "${FAILED_TASKS[@]}" | sort
+            exit 1
+          fi
