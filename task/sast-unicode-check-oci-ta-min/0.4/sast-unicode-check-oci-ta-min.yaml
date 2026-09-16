@@ -18,10 +18,10 @@ spec:
     type: string
   - default: SITE_DEFAULT
     description: Known False Positives (KFP) git URL (optionally taking a revision
-      delimited by \#). Defaults to "SITE_DEFAULT", which means the default value
-      "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux
-      instance and empty string for external Konflux instance. If set to an empty
-      string, the KFP filtering is disabled.
+      delimited by \#). Defaults to "SITE_DEFAULT", which means the value of the DEFAULT_KFP_GIT_URL
+      environment variable is used (empty by default; set it at the cluster/controller
+      level to point at a KFP repository). If set to an empty string, the KFP filtering
+      is disabled.
     name: KFP_GIT_URL
     type: string
   - default: ""
@@ -86,6 +86,8 @@ spec:
     env:
     - name: KFP_GIT_URL
       value: $(params.KFP_GIT_URL)
+    - name: DEFAULT_KFP_GIT_URL
+      value: ""
     - name: PROJECT_NAME
       value: $(params.PROJECT_NAME)
     - name: FIND_UNICODE_CONTROL_ARGS
@@ -185,7 +187,7 @@ spec:
       csgrep processed_sast_unicode_check_out.json
 
       if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-        KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+        KFP_GIT_URL="${DEFAULT_KFP_GIT_URL}"
       fi
       PROBE_URL="${KFP_GIT_URL%.git}" # trims '.git' suffix
 
