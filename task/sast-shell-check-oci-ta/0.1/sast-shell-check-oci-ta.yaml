@@ -113,7 +113,6 @@ spec:
         - name: KFP_GIT_URL
           value: $(params.KFP_GIT_URL)
         - name: DEFAULT_KFP_GIT_URL
-          value: ""
         - name: PROJECT_NAME
           value: $(params.PROJECT_NAME)
         - name: RECORD_EXCLUDED
