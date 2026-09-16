@@ -124,10 +124,10 @@ spec:
     - name: KFP_GIT_URL
       description: Known False Positives (KFP) git URL (optionally taking
         a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
-        the value of the DEFAULT_KFP_GIT_URL environment variable is used
-        (empty by default; set it at the cluster/controller level to point
-        at a KFP repository). If set to an empty string, the KFP filtering
-        is disabled.
+        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux
+        instance and empty string for external Konflux instance.
+        If DEFAULT_KFP_GIT_URL is set, that URL is used instead.
+        If set to an empty string, the KFP filtering is disabled.
       type: string
       default: SITE_DEFAULT
     - name: LABELS
@@ -1146,21 +1146,16 @@ spec:
           csgrep --mode=evtstat
 
         if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-          # Use the site-default KFP git URL provided via the DEFAULT_KFP_GIT_URL
-          # environment variable (empty for open-source instances; set it
-          # per-cluster to point at an internal KFP repository).
-          if [[ -n "${DEFAULT_KFP_GIT_URL}" ]]; then
-            PROBE_URL="${DEFAULT_KFP_GIT_URL%.git}" # trims '.git' suffix
-            echo -n "Probing ${PROBE_URL}... "
-            if curl --fail --head --max-time 60 --no-progress-meter "${PROBE_URL}" > >(head -1); then
-              echo "Setting KFP_GIT_URL to ${DEFAULT_KFP_GIT_URL}"
-              KFP_GIT_URL="${DEFAULT_KFP_GIT_URL}"
-            else
-              echo "Setting KFP_GIT_URL to empty string"
-              KFP_GIT_URL=
-            fi
+          # Set KFP_GIT_URL to the site default for internal Konflux instances.
+          # DEFAULT_KFP_GIT_URL overrides the built-in GitLab URL when set.
+          SITE_KFP_GIT_URL="${DEFAULT_KFP_GIT_URL:-https://gitlab.cee.redhat.com/osh/known-false-positives.git}"
+          PROBE_URL="${SITE_KFP_GIT_URL%.git}" # trims '.git' suffix
+          echo -n "Probing ${PROBE_URL}... "
+          if curl --fail --head --max-time 60 --no-progress-meter "${PROBE_URL}" > >(head -1); then
+            echo "Setting KFP_GIT_URL to ${SITE_KFP_GIT_URL}"
+            KFP_GIT_URL="${SITE_KFP_GIT_URL}"
           else
-            echo "DEFAULT_KFP_GIT_URL is not set. Setting KFP_GIT_URL to empty string"
+            echo "Setting KFP_GIT_URL to empty string"
             KFP_GIT_URL=
           fi
         fi

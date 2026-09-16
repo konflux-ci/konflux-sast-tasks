@@ -10,7 +10,7 @@ See https://github.com/gitleaks/gitleaks for more information on how to use Gitl
 |GITLEAKS_ARGS|Additional CLI arguments to pass to gitleaks|""|false|
 |image-url|Image URL.||true|
 |image-digest|Digest of the image to scan.||true|
-|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the value of the DEFAULT_KFP_GIT_URL environment variable is used (empty by default; set it at the cluster/controller level to point at a KFP repository). If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
+|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If DEFAULT_KFP_GIT_URL is set, that URL is used instead when the param is SITE_DEFAULT. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 |PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
 |RECORD_EXCLUDED|Write excluded records in file. Useful for auditing (defaults to false).|false|false|
 |TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas.|.|false|

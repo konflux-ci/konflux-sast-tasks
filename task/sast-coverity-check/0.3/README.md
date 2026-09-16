@@ -51,7 +51,7 @@ Scans source code for security vulnerabilities, including common issues such as 
 |TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas. This only applies to buildless capture, which is only attempted if buildful capture fails to produce and results.|.|false|
 |COV_ANALYZE_ARGS|Arguments to be appended to the cov-analyze command|--enable HARDCODED_CREDENTIALS --security --concurrency --spotbugs-max-mem=4096|false|
 |IMP_FINDINGS_ONLY|Report only important findings. Default is true. To report all findings, specify "false"|true|false|
-|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the value of the DEFAULT_KFP_GIT_URL environment variable is used (empty by default; set it at the cluster/controller level to point at a KFP repository). If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
+|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If DEFAULT_KFP_GIT_URL is set, that URL is used instead when the param is SITE_DEFAULT. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 
 ## Results
 |name|description|

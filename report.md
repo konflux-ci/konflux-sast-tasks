@@ -1,54 +1,40 @@
 # KFP git URL report
 
-Branch: currently `main` (uncommitted working-tree changes). These edits should move to a dedicated branch before commit.
+Branch: currently `main` (uncommitted). Move to a dedicated branch before commit.
 
-## Problem
+## Goal
 
-`KFP_GIT_URL` defaults to `SITE_DEFAULT`. Until now, that sentinel was rewritten in the task script to a hardcoded internal GitLab URL:
+Keep the existing `SITE_DEFAULT` flow. Only add `DEFAULT_KFP_GIT_URL` as an optional override.
+
+Users still pass the string `SITE_DEFAULT` (the Task default). Scripts still check that sentinel, same as before.
+
+## Behavior
+
+When `KFP_GIT_URL` is `SITE_DEFAULT`:
 
 ```bash
-KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+KFP_GIT_URL="${DEFAULT_KFP_GIT_URL:-https://gitlab.cee.redhat.com/osh/known-false-positives.git}"
 ```
 
-Open-source / external Konflux then probes an internal hostname, fails, and skips KFP filtering. The URL also cannot be changed per cluster without forking the task.
+Then the original probe/clone path runs.
 
-## What was done
-
-Re-applied the previous (stashed) KFP URL work on current `main`.
-
-When `KFP_GIT_URL` is `SITE_DEFAULT`, tasks now copy `DEFAULT_KFP_GIT_URL` instead of the hardcoded GitLab URL. `DEFAULT_KFP_GIT_URL` is a step env var, empty by default. Internal clusters are expected to set it to their KFP repo; if it is empty, KFP filtering is skipped.
-
-### Behavior
-
-| `KFP_GIT_URL` param | Result |
+| Situation | Result |
 |---|---|
-| `SITE_DEFAULT` and `DEFAULT_KFP_GIT_URL` is set | Use that URL (Coverity still probes it first) |
-| `SITE_DEFAULT` and `DEFAULT_KFP_GIT_URL` is empty | Treat as unset; skip KFP |
-| explicit git URL | Unchanged; clone/filter as before |
-| empty string | Unchanged; KFP disabled |
+| Param `SITE_DEFAULT`, env empty (current YAML) | Same as today: use the GitLab URL, probe it, clone on internal, skip on OSS |
+| Param `SITE_DEFAULT`, env set to another URL | Use that URL instead, then probe/clone |
+| Param is an explicit git URL | Unchanged |
+| Param is empty | Unchanged; KFP disabled |
 
-### Files touched (current task versions only)
+Coverity still probes before setting `KFP_GIT_URL`; the URL it probes is `DEFAULT_KFP_GIT_URL` if set, otherwise the GitLab URL.
 
-- shell-check 0.1 (base, oci-ta, oci-ta-min)
-- snyk-check 0.5 (base, oci-ta)
-- gitleaks-check 0.1 (base, oci-ta)
-- unicode-check 0.4 (base, oci-ta, oci-ta-min)
-- coverity-check 0.3 (`patch.yaml`, generated yaml, oci-ta)
+`DEFAULT_KFP_GIT_URL` is a step env var with `value: ""`. Empty means “use the built-in GitLab URL”, not “skip KFP”.
 
-Each of those: param description, `DEFAULT_KFP_GIT_URL` env (`value: ""`), `SITE_DEFAULT` handling, and README `KFP_GIT_URL` row.
+## Files
 
-Coverity is slightly different from the clone-based tasks: it already probed the URL before using it. That probe now uses `DEFAULT_KFP_GIT_URL` instead of `gitlab.cee.redhat.com`.
+Current task versions only: shell-check 0.1, snyk-check 0.5, gitleaks-check 0.1, unicode-check 0.4, coverity-check 0.3 (including oci-ta / min).
 
-Archived tasks, tests, and older versions (unicode 0.2/0.3, snyk 0.4) were left alone.
+## Still needed
 
-## What is still needed
-
-1. **Move off `main`** onto a feature branch, then commit. Do not mix this with PSSECAUT-1604.
-
-2. **Wire `DEFAULT_KFP_GIT_URL` on internal clusters.** The Task sets `value: ""`, so a cluster-wide pod env will **not** override it. Internal Konflux needs a real injection path (controller overlay, kustomize patch, or a Task param). Until that exists, `SITE_DEFAULT` skips KFP everywhere, including internal.
-
-3. **Confirm tests.** Pipelines that pass an explicit `KFP_GIT_URL` are fine. Anything that relied on `SITE_DEFAULT` actually cloning `gitlab.cee.redhat.com` will now skip filtering unless `DEFAULT_KFP_GIT_URL` is populated.
-
-4. **Optional:** older still-shipped versions (`sast-snyk-check/0.4`, `sast-unicode-check/0.2` and `0.3`) still hardcode the GitLab URL.
-
-5. **Do not commit `report.md`** with the task change unless you want it in the PR.
+1. Feature branch, then commit. Do not mix with PSSECAUT-1604.
+2. A real way to set `DEFAULT_KFP_GIT_URL` on a cluster if you want a URL other than GitLab (`value: ""` in the Task will not pick up a pod env). Until then, `SITE_DEFAULT` keeps today’s GitLab behavior.
+3. Do not commit `report.md` unless you want it in the PR.
