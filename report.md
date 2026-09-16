@@ -1,40 +1,39 @@
 # KFP git URL report
 
-Branch: currently `main` (uncommitted). Move to a dedicated branch before commit.
+Branch: `sw/PSSECAUT-1584`
 
 ## Goal
 
-Keep the existing `SITE_DEFAULT` flow. Only add `DEFAULT_KFP_GIT_URL` as an optional override.
-
-Users still pass the string `SITE_DEFAULT` (the Task default). Scripts still check that sentinel, same as before.
+Remove the hardcoded internal GitLab KFP endpoint from this open-source repo.
+Keep the `SITE_DEFAULT` sentinel. `SITE_DEFAULT` now means “use `DEFAULT_KFP_GIT_URL`”.
 
 ## Behavior
 
 When `KFP_GIT_URL` is `SITE_DEFAULT`:
 
 ```bash
-KFP_GIT_URL="${DEFAULT_KFP_GIT_URL:-https://gitlab.cee.redhat.com/osh/known-false-positives.git}"
+KFP_GIT_URL="${DEFAULT_KFP_GIT_URL}"
 ```
 
-Then the original probe/clone path runs.
+Then the original probe/clone path runs. There is no bash `${VAR:-fallback}` and no `gitlab.cee.redhat.com` URL in current non-Coverity tasks.
 
 | Situation | Result |
 |---|---|
-| Param `SITE_DEFAULT`, env empty (current YAML) | Same as today: use the GitLab URL, probe it, clone on internal, skip on OSS |
-| Param `SITE_DEFAULT`, env set to another URL | Use that URL instead, then probe/clone |
+| Param `SITE_DEFAULT`, env empty (current YAML) | `KFP_GIT_URL` becomes empty; probe/clone is skipped |
+| Param `SITE_DEFAULT`, env set to a KFP git URL | Use that URL, then probe/clone |
 | Param is an explicit git URL | Unchanged |
 | Param is empty | Unchanged; KFP disabled |
 
-Coverity still probes before setting `KFP_GIT_URL`; the URL it probes is `DEFAULT_KFP_GIT_URL` if set, otherwise the GitLab URL.
-
-`DEFAULT_KFP_GIT_URL` is a step env var with `value: ""`. Empty means “use the built-in GitLab URL”, not “skip KFP”.
+`DEFAULT_KFP_GIT_URL` is a step env var with `value: ""`. Empty means skip KFP.
 
 ## Files
 
-Current task versions only: shell-check 0.1, snyk-check 0.5, gitleaks-check 0.1, unicode-check 0.4, coverity-check 0.3 (including oci-ta / min).
+Current non-Coverity task versions: shell-check 0.1, snyk-check 0.5, gitleaks-check 0.1, unicode-check 0.4 (including oci-ta / min). YAML, param descriptions, env comments, and READMEs no longer mention the GitLab URL.
+
+Coverity tasks are deprecated and were reverted to `origin/main` (still the original hardcoded GitLab probe). Older/archived task versions were left unchanged.
 
 ## Still needed
 
-1. Feature branch, then commit. Do not mix with PSSECAUT-1604.
-2. A real way to set `DEFAULT_KFP_GIT_URL` on a cluster if you want a URL other than GitLab (`value: ""` in the Task will not pick up a pod env). Until then, `SITE_DEFAULT` keeps today’s GitLab behavior.
+1. Commit the Coverity revert plus this GitLab-fallback removal.
+2. A real way to set `DEFAULT_KFP_GIT_URL` on a cluster (`value: ""` in the Task will not pick up a pod env). Until then, `SITE_DEFAULT` skips KFP.
 3. Do not commit `report.md` unless you want it in the PR.

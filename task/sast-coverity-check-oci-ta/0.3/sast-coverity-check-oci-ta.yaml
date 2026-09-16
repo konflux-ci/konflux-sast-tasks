@@ -124,10 +124,9 @@ spec:
     - name: KFP_GIT_URL
       description: Known False Positives (KFP) git URL (optionally taking
         a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
-        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux
-        instance and empty string for external Konflux instance.
-        If DEFAULT_KFP_GIT_URL is set, that URL is used instead.
-        If set to an empty string, the KFP filtering is disabled.
+        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+        for internal Konflux instance and empty string for external Konflux
+        instance. If set to an empty string, the KFP filtering is disabled.
       type: string
       default: SITE_DEFAULT
     - name: LABELS
@@ -1032,8 +1031,6 @@ spec:
           value: $(params.COV_ANALYZE_ARGS)
         - name: KFP_GIT_URL
           value: $(params.KFP_GIT_URL)
-        - name: DEFAULT_KFP_GIT_URL
-          value: ""
         - name: IMP_FINDINGS_ONLY
           value: $(params.IMP_FINDINGS_ONLY)
         - name: PROJECT_NAME
@@ -1146,14 +1143,12 @@ spec:
           csgrep --mode=evtstat
 
         if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-          # Set KFP_GIT_URL to the site default for internal Konflux instances.
-          # DEFAULT_KFP_GIT_URL overrides the built-in GitLab URL when set.
-          SITE_KFP_GIT_URL="${DEFAULT_KFP_GIT_URL:-https://gitlab.cee.redhat.com/osh/known-false-positives.git}"
-          PROBE_URL="${SITE_KFP_GIT_URL%.git}" # trims '.git' suffix
+          # Set KFP_GIT_URL to https://gitlab.cee.redhat.com/osh/known-false-positives.git for internal Konflux instances
+          PROBE_URL="https://gitlab.cee.redhat.com/osh/known-false-positives"
           echo -n "Probing ${PROBE_URL}... "
           if curl --fail --head --max-time 60 --no-progress-meter "${PROBE_URL}" > >(head -1); then
-            echo "Setting KFP_GIT_URL to ${SITE_KFP_GIT_URL}"
-            KFP_GIT_URL="${SITE_KFP_GIT_URL}"
+            echo "Setting KFP_GIT_URL to https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+            KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
           else
             echo "Setting KFP_GIT_URL to empty string"
             KFP_GIT_URL=
