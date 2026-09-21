@@ -88,6 +88,7 @@ spec:
     - name: sast-snyk-check
       computeResources:
         limits:
+          cpu: "1"
           memory: 6Gi
         requests:
           cpu: "1"
@@ -396,6 +397,7 @@ spec:
     - name: upload
       computeResources:
         limits:
+          cpu: 100m
           memory: 256Mi
         requests:
           cpu: 100m
