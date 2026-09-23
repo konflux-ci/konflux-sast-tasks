@@ -18,7 +18,7 @@ See https://snyk.io/product/snyk-code/ and https://snyk.io/ for more information
 |caTrustConfigMapName|The name of the ConfigMap to read CA bundle data from.|trusted-ca|false|
 |caTrustConfigMapKey|The name of the key in the ConfigMap that contains the CA bundle data.|ca-bundle.crt|false|
 |IMP_FINDINGS_ONLY|Report only important findings in task result. Default is "true". To report all findings in task result, specify "false". Uploaded SARIF report to remote registry always includes all findings, regardless of severity level.|true|false|
-|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
+|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the value of the DEFAULT_KFP_GIT_URL environment variable is used (empty by default; set it at the cluster/controller level to point at a KFP repository). If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 |PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
 |RECORD_EXCLUDED|Write excluded records in file. Useful for auditing (defaults to false).|false|false|
 |IGNORE_FILE_PATHS|Directories or files to be excluded from Snyk scan (Comma-separated). Useful to split the directories of a git repo across multiple components.|""|false|
