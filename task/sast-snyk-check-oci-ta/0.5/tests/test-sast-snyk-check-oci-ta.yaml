@@ -45,7 +45,7 @@ spec:
               mountPath: /work
         steps:
           - name: create-test-source
-            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d4155ab6553b406bd5ab96b98bb10ab97a38a6f9dcb7c39dd18678428e8b2e64
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:0e014b209d31c7716d442e3b13d651a4b41863734cfa0056bac5487994617a6b
             script: |
               #!/usr/bin/env bash
               set -euo pipefail
@@ -63,7 +63,7 @@ spec:
                 '    os.system(request.args.get("cmd"))' \
                 > /work/source/run.py
           - name: create-trusted-artifact
-            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d4155ab6553b406bd5ab96b98bb10ab97a38a6f9dcb7c39dd18678428e8b2e64
+            image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:0e014b209d31c7716d442e3b13d651a4b41863734cfa0056bac5487994617a6b
             env:
               - name: ORAS_OPTIONS
                 value: --insecure
