@@ -18,9 +18,13 @@ command -v go &> /dev/null || { echo Please install golang to run this tool; exi
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 TASK_DIR="$(realpath "${ROOT_DIR}/task")"
+<<<<<<< ours
 # The repository generator retains resource requirements for generated TA steps.
 # Keep an explicit override for testing a newer upstream generator when desired.
 : "${TRUSTED_ARTIFACTS=${ROOT_DIR}/task-generator/trusted-artifacts}"
+=======
+: "${TRUSTED_ARTIFACTS=github.com/konflux-ci/task-repo-shared-ci/ta-generator@v1.0.0}"
+>>>>>>> theirs
 
 tashdir="$(mktemp -d)"
 trap 'rm -rf "${tashdir}"' EXIT

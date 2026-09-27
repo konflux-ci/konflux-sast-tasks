@@ -15,6 +15,8 @@ name: "Lint Tekton Tasks"
   merge_group:
     types: [checks_requested]
 
+permissions:
+  contents: read
 jobs:
   lint-disallowed-params:
     name: "Check for insecure params in tasks"
