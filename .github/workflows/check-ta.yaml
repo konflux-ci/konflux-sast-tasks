@@ -11,6 +11,8 @@ name: Validate PR - Trusted Artifact variants
     branches: [main]
   merge_group:
     types: [checks_requested]
+permissions:
+  contents: read
 jobs:
   go:
     name: Check Trusted Artifact variants
