@@ -16,6 +16,9 @@ name: Run Task Tests
   merge_group:
     types: [checks_requested]
 
+permissions:
+  contents: read
+
 jobs:
   run-task-tests:
     runs-on: ubuntu-24.04
@@ -68,7 +71,7 @@ jobs:
         with:
           repository: 'konflux-ci/konflux-ci'
           path: konflux-ci
-          ref: d510887fc3f38a8f8f4f4d5540f5b7199d4c7f67
+          ref: 3eb73c519dee30ddb4b40bbce87b3d1e54aa6f62
 
       - name: Create k8s Kind Cluster
         if: steps.changed-task-dirs.outputs.any_changed == 'true'
@@ -96,9 +99,11 @@ jobs:
 
       - name: Validate Tekton Tasks Syntax
         if: steps.changed-task-dirs.outputs.any_changed == 'true'
+        env:
+          CHANGED_DIRS: ${{ steps.changed-task-dirs.outputs.all_changed_files }}
         run: |
           cd self
-          ./.github/scripts/check_tekton_tasks.sh ${{ steps.changed-task-dirs.outputs.all_changed_files }}
+          ./.github/scripts/check_tekton_tasks.sh ${CHANGED_DIRS}
 
       - name: Deploying Konflux
         if: steps.tasks-to-be-tested.outputs.tasklist != ''

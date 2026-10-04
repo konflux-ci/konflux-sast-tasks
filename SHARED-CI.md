@@ -323,7 +323,7 @@ in Pipelines that make use of Trusted Artifacts.
 To author a Trusted Artifacts variant of a Task, create the `${task_name}-oci-ta`
 directory, define a [`recipe.yaml`][recipe.yaml] inside the directory and generate
 the TA variant using the [`hack/generate-ta-tasks.sh`](hack/generate-ta-tasks.sh)
-script. See the [trusted-artifacts generator] README for more details.
+script. See the [ta-generator] README for more details.
 
 The generate script also copies the migration for the **current task version**
 (`migrations/<version>.sh`, matching the `app.kubernetes.io/version` label) from
@@ -612,10 +612,9 @@ hack/versioning.py new-changelog task/
 [onboarding process]: https://github.com/konflux-ci/task-repo-shared-ci?tab=readme-ov-file#-onboarding
 [cruft]: https://cruft.github.io/cruft
 [uv]: https://docs.astral.sh/uv/
-[recipe.yaml]: https://github.com/konflux-ci/build-definitions/tree/main/task-generator/trusted-artifacts#configuration-in-recipeyaml
-[trusted-artifacts generator]: https://github.com/konflux-ci/build-definitions/tree/main/task-generator/trusted-artifacts
+[recipe.yaml]: https://github.com/konflux-ci/task-repo-shared-ci/tree/main/ta-generator#configuration-in-recipeyaml
+[ta-generator]: https://github.com/konflux-ci/task-repo-shared-ci/tree/main/ta-generator
 [GITHUB_TOKEN]: https://docs.github.com/en/actions/concepts/security/github_token
-[tekton-catalog-structure]: https://github.com/tektoncd/catalog?tab=readme-ov-file#catalog-structure
 [Renovate]: https://docs.renovatebot.com/
 [renovate-ignorepaths]: https://docs.renovatebot.com/configuration-options/#ignorepaths
 [ADR 54: CHANGELOG.md format]: https://github.com/konflux-ci/architecture/blob/main/ADR/0054-task-versioning.md#changelogmd-format
