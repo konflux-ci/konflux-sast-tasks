@@ -323,6 +323,7 @@ func perform(task *pipeline.Task, recipe *Recipe) error {
 			Args:  args,
 			ComputeResources: core.ResourceRequirements{
 				Requests: core.ResourceList{
+					core.ResourceCPU:    resource.MustParse("50m"),
 					core.ResourceMemory: resource.MustParse("4Gi"),
 				},
 				Limits: core.ResourceList{

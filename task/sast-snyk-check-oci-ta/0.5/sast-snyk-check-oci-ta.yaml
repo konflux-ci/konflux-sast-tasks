@@ -128,6 +128,7 @@ spec:
         limits:
           memory: 4Gi
         requests:
+          cpu: 50m
           memory: 4Gi
     - name: fetch-extra-artifacts
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d4155ab6553b406bd5ab96b98bb10ab97a38a6f9dcb7c39dd18678428e8b2e64
