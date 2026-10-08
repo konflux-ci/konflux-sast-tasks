@@ -171,14 +171,19 @@ spec:
           fi
         done
 
-        # determine number of available CPU cores for shellcheck based on container cgroup v2 CPU limits
-        # this calculates the ceiling, so if the cpu limit is 0.5, the number of jobs will be 1.
+        # Cap ShellCheck parallelism (PSSECAUT-1196). Prefer an explicit SC_JOBS, else
+        # derive from a cgroup v2 CPU limit when present. With no limits.cpu (policy),
+        # cgroup quota is "max" — default to 1 job aligned with the 850m CPU request.
         if [ -z "$SC_JOBS" ] && [ -r "/sys/fs/cgroup/cpu.max" ]; then
           read -r quota period </sys/fs/cgroup/cpu.max
           if [ "$quota" != "max" ] && [ -n "$period" ] && [ "$period" -gt 0 ]; then
             export SC_JOBS=$(((quota + period - 1) / period))
             echo "INFO: Setting SC_JOBS=${SC_JOBS} based on cgroups v2 max for run-shellcheck.sh"
           fi
+        fi
+        if [ -z "$SC_JOBS" ]; then
+          export SC_JOBS=1
+          echo "INFO: Setting SC_JOBS=${SC_JOBS} default (no cgroup CPU limit; override via SC_JOBS env if needed)"
         fi
 
         if [[ "${SKIP_JINJA}" == "true" ]]; then
@@ -278,11 +283,10 @@ spec:
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
       computeResources:
         limits:
-          cpu: "8"
-          memory: 4Gi
+          memory: 6Gi
         requests:
-          cpu: "1"
-          memory: 4Gi
+          cpu: 850m
+          memory: 6Gi
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:1cc659b4d30536ec98300ac551739ef36dee345a7dcfe06129fd78abdc3688ac
       workingDir: /var/workdir/source

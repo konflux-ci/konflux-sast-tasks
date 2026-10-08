@@ -6,26 +6,29 @@
 #     1	sast-shell-check
 #     2	upload
 
-# use-trusted-artifact step
+# use-trusted-artifact step — keep minimal (not the production 4Gi TA standard)
 - op: test
   path: /spec/steps/0/name
   value: use-trusted-artifact
-- op: remove
+- op: replace
   path: /spec/steps/0/computeResources
+  value:
+    limits:
+      memory: 64Mi
+    requests:
+      memory: 64Mi
+      cpu: 50m
 
-# sast-shell-check step
+# sast-shell-check step — reduced for minimal/demo pipelines (PR #93);
+# parent oci-ta has no limits.cpu (policy); only shrink memory + cpu request
 - op: test
   path: /spec/steps/1/name
   value: sast-shell-check
 - op: replace
-  path: /spec/steps/1/computeResources/limits/memory
-  value: 256Mi
-- op: replace
-  path: /spec/steps/1/computeResources/requests/memory
-  value: 256Mi
-- op: replace
-  path: /spec/steps/1/computeResources/limits/cpu
-  value: 128m
-- op: replace
-  path: /spec/steps/1/computeResources/requests/cpu
-  value: 128m
+  path: /spec/steps/1/computeResources
+  value:
+    limits:
+      memory: 256Mi
+    requests:
+      memory: 256Mi
+      cpu: 128m
