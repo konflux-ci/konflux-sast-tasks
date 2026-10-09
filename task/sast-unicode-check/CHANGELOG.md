@@ -11,6 +11,14 @@ If that's not something you ever plan to do, consider removing this section.
 
 *Nothing yet.*
 
+## 0.4.1
+
+### Changed
+
+- Version bump only, the task itself is unchanged. The Trusted Artifacts variants
+  move to the same version to ship a migration that removes the obsolete
+  `CACHI2_ARTIFACT` parameter from user pipelines.
+
 ## 0.4.0
 
 ### Added
