@@ -288,10 +288,10 @@ spec:
   stepTemplate:
     computeResources:
       limits:
-        memory: 4Gi
+        memory: 64Mi
       requests:
-        cpu: "1"
-        memory: 1Gi
+        cpu: 50m
+        memory: 64Mi
     env:
       - name: ACTIVATION_KEY
         value: $(params.ACTIVATION_KEY)
@@ -511,6 +511,12 @@ spec:
           cat /tmp/cstrans-df-run.log >&2
           exit $EC
         fi
+      computeResources:
+        limits:
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
     - name: build
       image: quay.io/redhat-services-prod/sast/coverity:202503.3
       imagePullPolicy: Always
@@ -1008,10 +1014,10 @@ spec:
         echo "[$(date --utc -Ins)] End build"
       computeResources:
         limits:
-          memory: 16Gi
+          memory: 9Gi
         requests:
-          cpu: "4"
-          memory: 4Gi
+          cpu: 16500m
+          memory: 9Gi
       securityContext:
         capabilities:
           add:
@@ -1221,7 +1227,7 @@ spec:
         fi
       computeResources:
         limits:
-          memory: 16Gi
+          memory: 4Gi
         requests:
-          cpu: "4"
+          cpu: 900m
           memory: 4Gi

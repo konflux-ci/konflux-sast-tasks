@@ -78,16 +78,16 @@
   # We reference the Coverity image by floating tag, make sure to always pull the latest revision.
   value: Always
 
-# Change build step resources
+# Change build step resources (P95+5% from sast-coverity-check-oci-ta, 15d)
+# Policy: requests.memory == limits.memory, requests.cpu set, no limits.cpu
 - op: replace
-  path: /spec/steps/0/computeResources/limits/memory
-  value: 16Gi
-- op: replace
-  path: /spec/steps/0/computeResources/requests/cpu
-  value: 4
-- op: replace
-  path: /spec/steps/0/computeResources/requests/memory
-  value: 4Gi
+  path: /spec/steps/0/computeResources
+  value:
+    limits:
+      memory: 9Gi
+    requests:
+      memory: 9Gi
+      cpu: 16500m
 
 # Additional parameters
 - op: add
@@ -175,12 +175,28 @@
       /shared/license.dat:/opt/coverity/bin/license.dat
       /usr/libexec/csgrep-static:/usr/libexec/csgrep-static
 
+# Align stepTemplate with policy floors (64Mi / 50m); prepare inherits unless overridden
+- op: replace
+  path: /spec/stepTemplate/computeResources
+  value:
+    limits:
+      memory: 64Mi
+    requests:
+      memory: 64Mi
+      cpu: 50m
+
 # Add prepare step
 - op: add
   path: /spec/steps/0
   value:
     name: prepare
     image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
+    computeResources:
+      limits:
+        memory: 64Mi
+      requests:
+        memory: 64Mi
+        cpu: 50m
     workingDir: $(workspaces.source.path)
     env:
       - name: COV_ANALYZE_ARGS
@@ -346,10 +362,10 @@
     image: quay.io/redhat-services-prod/sast/coverity:202503.3@sha256:63a6d59a6ffad3de7ea6d0df88ec67001a41cbffaeeee7b4e9ab9337527c92f8
     computeResources:
       limits:
-        memory: 16Gi
+        memory: 4Gi
       requests:
         memory: 4Gi
-        cpu: 4
+        cpu: 900m
     volumeMounts:
       - name: trusted-ca
         mountPath: "/mnt/trusted-ca"

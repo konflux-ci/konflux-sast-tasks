@@ -233,10 +233,10 @@ spec:
   stepTemplate:
     computeResources:
       limits:
-        memory: 4Gi
+        memory: 64Mi
       requests:
-        cpu: "1"
-        memory: 1Gi
+        cpu: 50m
+        memory: 64Mi
     env:
     - name: STORAGE_DRIVER
       value: $(params.STORAGE_DRIVER)
@@ -290,7 +290,13 @@ spec:
     - mountPath: /shared
       name: shared
   steps:
-  - env:
+  - computeResources:
+      limits:
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    env:
     - name: COV_ANALYZE_ARGS
       value: $(params.COV_ANALYZE_ARGS)
     - name: DOCKERFILE
@@ -446,10 +452,10 @@ spec:
     - $(params.ANNOTATIONS[*])
     computeResources:
       limits:
-        memory: 16Gi
+        memory: 9Gi
       requests:
-        cpu: 4
-        memory: 4Gi
+        cpu: 16500m
+        memory: 9Gi
     env:
     - name: COMMIT_SHA
       value: $(params.COMMIT_SHA)
@@ -937,9 +943,9 @@ spec:
     workingDir: $(workspaces.source.path)
   - computeResources:
       limits:
-        memory: 16Gi
+        memory: 4Gi
       requests:
-        cpu: 4
+        cpu: 900m
         memory: 4Gi
     env:
     - name: IMAGE_URL
