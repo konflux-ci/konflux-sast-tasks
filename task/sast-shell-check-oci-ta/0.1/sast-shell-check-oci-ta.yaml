@@ -173,7 +173,8 @@ spec:
 
         # Cap ShellCheck parallelism (PSSECAUT-1196). Prefer an explicit SC_JOBS, else
         # derive from a cgroup v2 CPU limit when present. With no limits.cpu (policy),
-        # cgroup quota is "max" — default to 1 job aligned with the 850m CPU request.
+        # cgroup quota is "max" — default to 8 jobs to preserve prior parallelism from
+        # limits.cpu: 8 (CPU request stays 850m; override SC_JOBS if needed).
         if [ -z "$SC_JOBS" ] && [ -r "/sys/fs/cgroup/cpu.max" ]; then
           read -r quota period </sys/fs/cgroup/cpu.max
           if [ "$quota" != "max" ] && [ -n "$period" ] && [ "$period" -gt 0 ]; then
@@ -182,7 +183,7 @@ spec:
           fi
         fi
         if [ -z "$SC_JOBS" ]; then
-          export SC_JOBS=1
+          export SC_JOBS=8
           echo "INFO: Setting SC_JOBS=${SC_JOBS} default (no cgroup CPU limit; override via SC_JOBS env if needed)"
         fi
 
