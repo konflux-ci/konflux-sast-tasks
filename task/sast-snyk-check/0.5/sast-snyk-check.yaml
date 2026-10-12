@@ -140,6 +140,15 @@ spec:
         echo "INFO: Task environment variables:"
         printenv | sort
 
+        echo "INFO: konflux-info cluster-config ConfigMap:"
+        if command -v oc >/dev/null 2>&1; then
+          oc get -n konflux-info cm cluster-config -o yaml || echo "WARN: could not read konflux-info/cluster-config with oc"
+        elif command -v kubectl >/dev/null 2>&1; then
+          kubectl get -n konflux-info cm cluster-config -o yaml || echo "WARN: could not read konflux-info/cluster-config with kubectl"
+        else
+          echo "WARN: oc/kubectl not available in this image"
+        fi
+
         if [[ -z "${PROJECT_NAME}" ]]; then
             PROJECT_NAME=${COMPONENT_LABEL}
         fi
