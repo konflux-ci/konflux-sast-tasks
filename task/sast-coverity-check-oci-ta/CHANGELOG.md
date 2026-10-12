@@ -11,6 +11,12 @@ If that's not something you ever plan to do, consider removing this section.
 
 *Nothing yet.*
 
+## 0.3.1
+
+### Changed
+
+- Removed the obsolete `CACHI2_ARTIFACT` parameter.
+
 ## 0.3.0
 
 ### Added
