@@ -56,11 +56,6 @@ spec:
       description: Path to a file with build arguments, see https://www.mankier.com/1/buildah-build#--build-arg-file
       type: string
       default: ""
-    - name: CACHI2_ARTIFACT
-      description: The Trusted Artifact URI pointing to the artifact with
-        the prefetched dependencies.
-      type: string
-      default: ""
     - name: COMMIT_SHA
       description: The image is built from this commit.
       type: string
@@ -352,7 +347,6 @@ spec:
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
-        - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
           name: trusted-ca
