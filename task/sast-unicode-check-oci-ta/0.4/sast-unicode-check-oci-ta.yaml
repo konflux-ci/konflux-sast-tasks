@@ -271,10 +271,10 @@ spec:
         echo "${TEST_OUTPUT:-${ERROR_OUTPUT}}" | tee "$(results.TEST_OUTPUT.path)"
       computeResources:
         limits:
-          memory: 4Gi
+          memory: 256Mi
         requests:
-          cpu: 100m
-          memory: 4Gi
+          cpu: 600m
+          memory: 256Mi
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:1cc659b4d30536ec98300ac551739ef36dee345a7dcfe06129fd78abdc3688ac
       workingDir: /var/workdir/source
