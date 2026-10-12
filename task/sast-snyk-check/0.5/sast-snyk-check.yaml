@@ -137,6 +137,9 @@ spec:
         . /utils.sh
         trap 'handle_error $(results.TEST_OUTPUT.path)' EXIT
 
+        echo "INFO: Task environment variables:"
+        printenv | sort
+
         if [[ -z "${PROJECT_NAME}" ]]; then
             PROJECT_NAME=${COMPONENT_LABEL}
         fi
