@@ -68,10 +68,10 @@ spec:
       image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
       computeResources:
         limits:
-          memory: 4Gi
+          memory: 256Mi
         requests:
-          memory: 4Gi
-          cpu: 100m
+          memory: 256Mi
+          cpu: 600m
       # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
       # the cluster will set imagePullPolicy to IfNotPresent
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
