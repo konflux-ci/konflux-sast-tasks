@@ -11,6 +11,8 @@ name: Validate PR - Trusted Artifact variants
     branches: [main]
   merge_group:
     types: [checks_requested]
+permissions:
+  contents: read
 jobs:
   go:
     name: Check Trusted Artifact variants
@@ -20,7 +22,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install yq
-        uses: mikefarah/yq@c14f446382944492701b16c1ddb48bb9dbe683e3 # v4.53.6
+        uses: mikefarah/yq@504fc38780cc46be8444ea1b72fb55919fc0bfb0 # v4.54.1
         with:
           # Version from https://github.com/mikefarah/yq/releases
           version: 'v4.53.3'

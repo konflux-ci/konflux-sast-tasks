@@ -11,6 +11,9 @@ name: Update shared CI files
   workflow_dispatch:  # Allow to run manually
   schedule:
     - cron: "0 2 * * 0"  # Every Sunday at 02:00
+permissions:
+  contents: write
+  pull-requests: write
 jobs:
   update:
     runs-on: ubuntu-latest

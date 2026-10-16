@@ -11,6 +11,8 @@ name: Check task migrations
     branches: [main]
   merge_group:
     types: [checks_requested]
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-24.04
@@ -25,13 +27,13 @@ jobs:
           cluster_name: kind
       - uses: tektoncd/actions/setup-tektoncd@cd4768a594ec4a7af8ef72d73524a584cb564e34 # main
         with:
-          pipeline_version: v1.14.0
+          pipeline_version: v1.16.0
       - name: Run check
         run: |
           DEBIAN_FRONTEND=noninteractive \
           sudo apt-get install -y --no-install-recommends \
               tzdata python3-ruamel.yaml
-          pip install git+https://github.com/konflux-ci/pipeline-migration-tool --user
+          pip install 'git+https://github.com/konflux-ci/pipeline-migration-tool@v0.9.0' --user
 
           kubectl get all -n tekton-pipelines
           # Require name main
