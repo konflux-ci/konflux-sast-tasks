@@ -79,6 +79,7 @@
     ".github/resources/workspace-template.yaml",
     ".github/scripts/check_tekton_tasks.sh",
     ".github/scripts/test_tekton_tasks.sh",
+    ".github/workflows/check-compute-resources.yaml",
     ".github/workflows/check-kustomize-build.yaml",
     ".github/workflows/check-ta.yaml",
     ".github/workflows/check-task-migration.yaml",

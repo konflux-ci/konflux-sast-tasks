@@ -1,0 +1,26 @@
+# yamllint disable-file
+
+# <TEMPLATED FILE!>
+# This file comes from the templates at https://github.com/konflux-ci/task-repo-shared-ci.
+# Please consider sending a PR upstream instead of editing the file directly.
+# See the SHARED-CI.md document in this repo for more details.
+
+name: Check compute resources
+'on':
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+jobs:
+  check-compute-resources:
+    name: Check compute resources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+
+      - name: Check compute resources
+        run: uv run hack/check-compute-resources.py
