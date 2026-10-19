@@ -104,6 +104,52 @@ spec:
         - name: kind
           value: task
         resolver: bundles
+    - name: dump-cluster-config
+      runAfter:
+      - init
+      taskSpec:
+        volumes:
+        - name: package-registry-proxy-pip-url
+          secret:
+            secretName: package-registry-proxy-pip-url
+            optional: true
+        steps:
+        - name: dump
+          image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+          volumeMounts:
+          - name: package-registry-proxy-pip-url
+            mountPath: /etc/kfp-secret
+            readOnly: true
+          env:
+          - name: KFP_GIT_URL
+            value: SITE_DEFAULT
+          script: |
+            #!/usr/bin/env bash
+            set -euo pipefail
+
+            SECRET_FILE="/etc/kfp-secret/package-registry-proxy-pip-url"
+            SECRET_VALUE=""
+            if [[ -s "${SECRET_FILE}" ]]; then
+              SECRET_VALUE="$(cat "${SECRET_FILE}")"
+            else
+              FIRST_FILE="$(find /etc/kfp-secret -maxdepth 1 -type f ! -name '.*' -print -quit 2>/dev/null || true)"
+              if [[ -n "${FIRST_FILE}" && -s "${FIRST_FILE}" ]]; then
+                SECRET_VALUE="$(cat "${FIRST_FILE}")"
+              fi
+            fi
+
+            echo "INFO: mounted package-registry-proxy-pip-url paths:"
+            ls -la /etc/kfp-secret || true
+
+            if [[ -n "${SECRET_VALUE}" ]]; then
+              echo "INFO: secret found:"
+              echo "${SECRET_VALUE}"
+              KFP_GIT_URL="${SECRET_VALUE}"
+            else
+              echo "INFO: no secret found"
+              KFP_GIT_URL=""
+            fi
+            echo "INFO: KFP_GIT_URL=${KFP_GIT_URL}"
     - name: clone-repository
       params:
       - name: url
