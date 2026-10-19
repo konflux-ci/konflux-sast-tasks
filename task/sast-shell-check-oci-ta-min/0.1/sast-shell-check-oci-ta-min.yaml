@@ -19,9 +19,9 @@ spec:
     type: string
   - default: SITE_DEFAULT
     description: Known False Positives (KFP) git URL (optionally taking a revision
-      delimited by \#). Defaults to "SITE_DEFAULT", which means the default value
-      "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux
-      instance and empty string for external Konflux instance. If set to an empty
+      delimited by \#). Defaults to "SITE_DEFAULT", which means
+      the optional Secret "kfp-gitlab-url" (key "kfp-gitlab-url") is used when present.
+      If that Secret does not exist, KFP filtering is disabled. If set to an empty
       string, the KFP filtering is disabled.
     name: KFP_GIT_URL
     type: string
@@ -205,7 +205,11 @@ spec:
       fi
 
       if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-        KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+        if [[ -s /etc/kfp-secret/kfp-gitlab-url ]]; then
+            KFP_GIT_URL="$(cat /etc/kfp-secret/kfp-gitlab-url)"
+        else
+            KFP_GIT_URL=""
+        fi
       fi
       PROBE_URL="${KFP_GIT_URL%.git}" # trims '.git' suffix
 
@@ -264,6 +268,9 @@ spec:
       parse_test_output "$(context.task.name)" sarif shellcheck-results.sarif || true
       echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
     volumeMounts:
+    - mountPath: /etc/kfp-secret
+      name: kfp-gitlab-url
+      readOnly: true
     - mountPath: /mnt/trusted-ca
       name: trusted-ca
       readOnly: true
@@ -320,6 +327,10 @@ spec:
       subPath: ca-bundle.crt
     workingDir: /var/workdir/source
   volumes:
+  - name: kfp-gitlab-url
+    secret:
+      secretName: kfp-gitlab-url
+      optional: true
   - configMap:
       items:
       - key: $(params.caTrustConfigMapKey)

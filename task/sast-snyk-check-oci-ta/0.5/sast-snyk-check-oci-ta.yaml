@@ -50,9 +50,8 @@ spec:
     - name: KFP_GIT_URL
       description: Known False Positives (KFP) git URL (optionally taking
         a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
-        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git"
-        for internal Konflux instance and empty string for external Konflux
-        instance. If set to an empty string, the KFP filtering is disabled.
+        the optional Secret "kfp-gitlab-url" (key "kfp-gitlab-url") is used when present.
+        If that Secret does not exist, KFP filtering is disabled. If set to an empty string, the KFP filtering is disabled.
       type: string
       default: SITE_DEFAULT
     - name: PROJECT_NAME
@@ -100,6 +99,10 @@ spec:
       secret:
         optional: true
         secretName: $(params.SNYK_SECRET)
+    - name: kfp-gitlab-url
+      secret:
+        secretName: kfp-gitlab-url
+        optional: true
     - name: trusted-ca
       configMap:
         items:
@@ -313,6 +316,9 @@ spec:
         - mountPath: /etc/secrets
           name: snyk-secret
           readOnly: true
+        - mountPath: /etc/kfp-secret
+          name: kfp-gitlab-url
+          readOnly: true
         - mountPath: /mnt/trusted-ca
           name: trusted-ca
           readOnly: true
@@ -504,7 +510,11 @@ spec:
           csgrep sast_snyk_check_out_all_findings.json
 
           if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-            KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+            if [[ -s /etc/kfp-secret/kfp-gitlab-url ]]; then
+                KFP_GIT_URL="$(cat /etc/kfp-secret/kfp-gitlab-url)"
+            else
+                KFP_GIT_URL=""
+            fi
           fi
           PROBE_URL="${KFP_GIT_URL%.git}" # trims '.git' suffix
 
