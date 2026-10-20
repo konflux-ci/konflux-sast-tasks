@@ -8,7 +8,7 @@ ShellCheck is a static analysis tool, gives warnings and suggestions for bash/sh
 |---|---|---|---|
 |image-url|Image URL.|""|false|
 |image-digest|Image digest to report findings for.|""|false|
-|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the optional Secret "kfp-gitlab-url" (key "kfp-gitlab-url") is used when present. If that Secret does not exist, KFP filtering is disabled. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
+|KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the "kfp-gitlab-url" value from the konflux-info/cluster-config ConfigMap is used when present. If that value does not exist, KFP filtering is disabled. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 |PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
 |RECORD_EXCLUDED|Whether to record the excluded findings (default to false). If `true`, the excluded findings will be stored in `excluded-findings.json`. |false|false|
 |IMP_FINDINGS_ONLY|Whether to include important findings only|true|false|

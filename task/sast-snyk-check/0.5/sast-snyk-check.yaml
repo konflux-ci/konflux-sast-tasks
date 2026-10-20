@@ -51,8 +51,8 @@ spec:
       type: string
       description: Known False Positives (KFP) git URL (optionally taking
         a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
-        the optional Secret "kfp-gitlab-url" (key "kfp-gitlab-url") is used when present.
-        If that Secret does not exist, KFP filtering is disabled.
+        the "kfp-gitlab-url" value from the konflux-info/cluster-config ConfigMap is used when present.
+        If that value does not exist, KFP filtering is disabled.
         If set to an empty string, the KFP filtering is disabled.
 
       default: "SITE_DEFAULT"
@@ -77,10 +77,6 @@ spec:
       secret:
         secretName: $(params.SNYK_SECRET)
         optional: true
-    - name: kfp-gitlab-url
-      secret:
-        secretName: kfp-gitlab-url
-        optional: true
     - name: trusted-ca
       configMap:
         name: $(params.caTrustConfigMapName)
@@ -104,9 +100,6 @@ spec:
       volumeMounts:
         - name: snyk-secret
           mountPath: "/etc/secrets"
-          readOnly: true
-        - name: kfp-gitlab-url
-          mountPath: /etc/kfp-secret
           readOnly: true
         - name: trusted-ca
           mountPath: /mnt/trusted-ca
@@ -299,11 +292,36 @@ spec:
           csgrep sast_snyk_check_out_all_findings.json
 
           if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-            if [[ -s /etc/kfp-secret/kfp-gitlab-url ]]; then
-                KFP_GIT_URL="$(cat /etc/kfp-secret/kfp-gitlab-url)"
-            else
+              _kfp_cm="$(mktemp)"
+              _kfp_found=0
+              if command -v oc >/dev/null 2>&1; then
+                if oc get -n konflux-info cm cluster-config -o json > "${_kfp_cm}"; then
+                  _kfp_found=1
+                fi
+              elif command -v kubectl >/dev/null 2>&1; then
+                if kubectl get -n konflux-info cm cluster-config -o json > "${_kfp_cm}"; then
+                  _kfp_found=1
+                fi
+              else
+                _sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
+                _kube_host="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}"
+                _kube_port="${KUBERNETES_SERVICE_PORT:-443}"
+                _http="$(curl -sS -o "${_kfp_cm}" -w "%{http_code}" \
+                  --cacert "${_sa_dir}/ca.crt" \
+                  -H "Authorization: Bearer $(cat "${_sa_dir}/token")" \
+                  -H "Accept: application/json" \
+                  "https://${_kube_host}:${_kube_port}/api/v1/namespaces/konflux-info/configmaps/cluster-config" \
+                  || true)"
+                if [[ "${_http}" == "200" ]]; then
+                  _kfp_found=1
+                fi
+              fi
+              if [[ "${_kfp_found}" == "1" ]]; then
+                KFP_GIT_URL="$(jq -r '.data["kfp-gitlab-url"] // empty' "${_kfp_cm}")"
+              else
                 KFP_GIT_URL=""
-            fi
+              fi
+              rm -f "${_kfp_cm}"
           fi
           PROBE_URL="${KFP_GIT_URL%.git}" # trims '.git' suffix
 
