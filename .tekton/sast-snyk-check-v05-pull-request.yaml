@@ -115,22 +115,42 @@ spec:
             #!/usr/bin/env bash
             set -euo pipefail
 
-            echo "INFO: fetching konflux-info/cluster-config"
+            # Same lookup as SITE_DEFAULT / kfp-gitlab-url, using a key that already exists.
+            PACKAGE_REGISTRY_PROXY_YARN_URL=""
+            _kfp_cm="$(mktemp)"
+            _kfp_found=0
             if command -v oc >/dev/null 2>&1; then
-              oc get -n konflux-info cm cluster-config -o yaml \
-                || echo "INFO: could not read konflux-info/cluster-config"
+              if oc get -n konflux-info cm cluster-config -o json > "${_kfp_cm}"; then
+                _kfp_found=1
+              fi
             elif command -v kubectl >/dev/null 2>&1; then
-              kubectl get -n konflux-info cm cluster-config -o yaml \
-                || echo "INFO: could not read konflux-info/cluster-config"
+              if kubectl get -n konflux-info cm cluster-config -o json > "${_kfp_cm}"; then
+                _kfp_found=1
+              fi
             else
-              SA_DIR="/var/run/secrets/kubernetes.io/serviceaccount"
-              KUBE_HOST="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}"
-              KUBE_PORT="${KUBERNETES_SERVICE_PORT:-443}"
-              curl -sS --fail --cacert "${SA_DIR}/ca.crt" \
-                -H "Authorization: Bearer $(cat "${SA_DIR}/token")" \
-                -H "Accept: application/yaml" \
-                "https://${KUBE_HOST}:${KUBE_PORT}/api/v1/namespaces/konflux-info/configmaps/cluster-config" \
-                || echo "INFO: could not read konflux-info/cluster-config"
+              _sa_dir="/var/run/secrets/kubernetes.io/serviceaccount"
+              _kube_host="${KUBERNETES_SERVICE_HOST:-kubernetes.default.svc}"
+              _kube_port="${KUBERNETES_SERVICE_PORT:-443}"
+              _http="$(curl -sS -o "${_kfp_cm}" -w "%{http_code}" \
+                --cacert "${_sa_dir}/ca.crt" \
+                -H "Authorization: Bearer $(cat "${_sa_dir}/token")" \
+                -H "Accept: application/json" \
+                "https://${_kube_host}:${_kube_port}/api/v1/namespaces/konflux-info/configmaps/cluster-config" \
+                || true)"
+              if [[ "${_http}" == "200" ]]; then
+                _kfp_found=1
+              fi
+            fi
+            if [[ "${_kfp_found}" == "1" ]]; then
+              PACKAGE_REGISTRY_PROXY_YARN_URL="$(jq -r '.data["package-registry-proxy-yarn-url"] // empty' "${_kfp_cm}")"
+            fi
+            rm -f "${_kfp_cm}"
+
+            if [[ -n "${PACKAGE_REGISTRY_PROXY_YARN_URL}" ]]; then
+              echo "INFO: package-registry-proxy-yarn-url found:"
+              echo "${PACKAGE_REGISTRY_PROXY_YARN_URL}"
+            else
+              echo "INFO: package-registry-proxy-yarn-url not found"
             fi
     - name: clone-repository
       params:
