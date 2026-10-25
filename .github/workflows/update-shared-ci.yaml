@@ -11,6 +11,9 @@ name: Update shared CI files
   workflow_dispatch:  # Allow to run manually
   schedule:
     - cron: "0 2 * * 0"  # Every Sunday at 02:00
+permissions:
+  contents: write
+  pull-requests: write
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -106,7 +109,7 @@ jobs:
 
           bash "$renovate_update_script"
 
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
           # These may already be set globally for your organization
