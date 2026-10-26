@@ -53,9 +53,10 @@ spec:
       params:
         - name: image-url
           value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
-        # SITE_DEFAULT + cluster-config is covered by test-sast-shell-check-kfp-site-default.yaml
+        # Previous SITE_DEFAULT value. Explicit URL so cluster-config cannot
+        # change this test; Kind cannot reach GitLab so KFP is skipped.
         - name: KFP_GIT_URL
-          value: ""
+          value: https://gitlab.cee.redhat.com/osh/known-false-positives.git
     - name: check-result
       runAfter:
         - scan-with-shellcheck

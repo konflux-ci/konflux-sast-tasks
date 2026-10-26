@@ -88,6 +88,10 @@ spec:
           value: ""
         - name: image-digest
           value: sha256:a6e305864fefbce727a3d8cc9f0277eede5f0617696f9cda486b1f6b3b94f7cb
+        # Previous SITE_DEFAULT value. Explicit URL so cluster-config cannot
+        # change this test; Kind cannot reach GitLab so KFP is skipped.
+        - name: KFP_GIT_URL
+          value: https://gitlab.cee.redhat.com/osh/known-false-positives.git
     - name: check-result
       runAfter:
         - scan-with-snyk

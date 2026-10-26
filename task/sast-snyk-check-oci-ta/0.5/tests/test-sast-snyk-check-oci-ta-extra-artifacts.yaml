@@ -153,6 +153,10 @@ spec:
           value: $(tasks.mock-inputs.results.IMAGE_URL)
         - name: image-digest
           value: $(tasks.mock-inputs.results.IMAGE_DIGEST)
+        # Previous SITE_DEFAULT value. Explicit URL so cluster-config cannot
+        # change this test; Kind cannot reach GitLab so KFP is skipped.
+        - name: KFP_GIT_URL
+          value: https://gitlab.cee.redhat.com/osh/known-false-positives.git
     - name: check-result
       runAfter:
         - scan-with-snyk

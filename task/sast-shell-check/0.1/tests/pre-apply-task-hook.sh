@@ -24,9 +24,9 @@ else
 fi
 
 # Task pods use oc get against konflux-info; Kind does not grant that by default.
-echo "Granting ${TEST_NS} pipeline SAs get access to konflux-info ConfigMaps"
+echo "Granting ${TEST_NS} pipeline SAs get/patch access to konflux-info ConfigMaps"
 kubectl create role cluster-config-reader -n konflux-info \
-  --verb=get --resource=configmaps \
+  --verb=get,patch,update --resource=configmaps \
   --dry-run=client -o yaml | kubectl apply -f - -n konflux-info
 
 kubectl create rolebinding "${TEST_NS}-cluster-config-reader" -n konflux-info \
