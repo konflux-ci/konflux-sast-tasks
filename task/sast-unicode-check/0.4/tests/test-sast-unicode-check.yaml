@@ -57,10 +57,6 @@ spec:
           value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-unicode-check:latest"
         - name: image-digest
           value: sha256:d9fea2ee280880feef6909bef3e18318444231c83736bcc41d54b4e5064f23c9
-        # Previous SITE_DEFAULT value. Explicit URL so cluster-config cannot
-        # change this test; Kind cannot reach GitLab so KFP is skipped.
-        - name: KFP_GIT_URL
-          value: https://gitlab.cee.redhat.com/osh/known-false-positives.git
     - name: check-result
       runAfter:
         - scan-with-unicode
