@@ -30,8 +30,8 @@ spec:
       type: string
       description: Known False Positives (KFP) git URL (optionally taking
         a revision delimited by \#). Defaults to "SITE_DEFAULT", which means
-        the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux
-        instance and empty string for external Konflux instance.
+        the "kfp-gitlab-url" value from the konflux-info/cluster-config ConfigMap is used when present.
+        If that value does not exist, KFP filtering is disabled.
         If set to an empty string, the KFP filtering is disabled.
 
       default: "SITE_DEFAULT"
@@ -164,7 +164,7 @@ spec:
           csgrep --mode=grep sast_gitleaks_check_out_all_findings.json
 
           if [[ "${KFP_GIT_URL}" == "SITE_DEFAULT" ]]; then
-            KFP_GIT_URL="https://gitlab.cee.redhat.com/osh/known-false-positives.git"
+              KFP_GIT_URL=$(oc get -n konflux-info cm cluster-config -o jsonpath="{.data['kfp-gitlab-url']}" 2>/dev/null || true)
           fi
           PROBE_URL="${KFP_GIT_URL%.git}" # trims '.git' suffix
 

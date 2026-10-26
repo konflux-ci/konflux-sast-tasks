@@ -1,0 +1,147 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-sast-shell-check-kfp-unset
+spec:
+  description: |
+    Test SITE_DEFAULT when konflux-info/cluster-config has no kfp-gitlab-url.
+    oc get returns empty, KFP is skipped, and unfiltered findings remain.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: init
+      taskRef:
+        resolver: bundles
+        params:
+          - name: name
+            value: init
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-init:0.4.3@sha256:7854d7babe4136e53e337f6433d952532314433b48bb62b422ddc02700934d85
+          - name: kind
+            value: task
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+    - name: unset-kfp-cluster-config
+      runAfter:
+        - init
+      taskSpec:
+        steps:
+          - name: unset-kfp-gitlab-url
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+              if oc get -n konflux-info cm cluster-config >/dev/null 2>&1; then
+                oc patch -n konflux-info cm cluster-config --type json \
+                  -p '[{"op":"remove","path":"/data/kfp-gitlab-url"}]' || true
+              fi
+              value="$(oc get -n konflux-info cm cluster-config -o jsonpath="{.data['kfp-gitlab-url']}" 2>/dev/null || true)"
+              if [[ -n "${value}" ]]; then
+                echo "FAIL: kfp-gitlab-url still set to ${value}"
+                exit 1
+              fi
+              echo "PASS: kfp-gitlab-url is unset on konflux-info/cluster-config"
+    - name: clone-repository
+      runAfter:
+        - init
+      workspaces:
+        - name: output
+          workspace: tests-workspace
+      params:
+        - name: url
+          value: https://github.com/konflux-ci/test-data-sast
+        - name: revision
+          value: main
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/container-build-catalog.git
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: task/git-clone/git-clone.yaml
+    - name: scan-with-shellcheck
+      workspaces:
+        - name: workspace
+          workspace: tests-workspace
+      runAfter:
+        - clone-repository
+        - unset-kfp-cluster-config
+      taskRef:
+        name: sast-shell-check
+      params:
+        - name: image-url
+          value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+        # Omit KFP_GIT_URL so SITE_DEFAULT reads the now-empty cluster-config key.
+    - name: check-result
+      runAfter:
+        - scan-with-shellcheck
+      workspaces:
+        - name: workspace
+          workspace: tests-workspace
+      params:
+        - name: test-output
+          value: $(tasks.scan-with-shellcheck.results.TEST_OUTPUT)
+      taskSpec:
+        params:
+          - name: test-output
+        workspaces:
+          - name: workspace
+        steps:
+          - name: check-kfp-not-cloned
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+            script: |
+              #!/usr/bin/env bash
+              set -eu
+              KFP_DIR="$(workspaces.workspace.path)/hacbs/sast-shell-check/known-false-positives"
+              if [[ -d "${KFP_DIR}/.git" ]]; then
+                echo "FAIL: SITE_DEFAULT cloned KFP though kfp-gitlab-url is unset"
+                git -C "${KFP_DIR}" remote get-url origin || true
+                exit 1
+              fi
+              echo "PASS: SITE_DEFAULT did not clone KFP when cluster-config key is missing"
+          - name: check-test-output
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+            env:
+              - name: TEST_OUTPUT
+                value: $(params.test-output)
+            script: |
+              #!/usr/bin/env bash
+              set -eu
+
+              echo "Verifying TEST_OUTPUT result..."
+              echo "TEST_OUTPUT: $TEST_OUTPUT"
+
+              if ! echo "$TEST_OUTPUT" | jq -e '.result == "FAILURE"' > /dev/null; then
+                echo "FAIL: Expected TEST_OUTPUT.result to be FAILURE when findings are present"
+                echo "$TEST_OUTPUT" | jq '.'
+                exit 1
+              fi
+
+              failures=$(echo "$TEST_OUTPUT" | jq -r '.failures')
+              if [[ "$failures" != "10" ]]; then
+                echo "FAIL: Expected 10 failures, got $failures"
+                echo "$TEST_OUTPUT" | jq '.'
+                exit 1
+              fi
+
+              echo "PASS: TEST_OUTPUT shows FAILURE with 10 findings when cluster-config KFP URL is unset"
+          - name: check-result
+            image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
+            script: |
+              #!/usr/bin/env bash
+              set -eu
+              echo "Check-result"
+              output=$(csgrep --mode=evtstat "$(workspaces.workspace.path)"/hacbs/sast-shell-check/shellcheck-results.sarif | tr -d '\n')
+              expected="      8	SHELLCHECK_WARNING                              	warning[SC1083]      2	SHELLCHECK_WARNING                              	warning[SC2069]"
+              if [[ "$output" == "$expected" ]]; then
+                echo "Test passed!"
+              else
+                echo "Test failed!"
+                echo "Actual output: [$output]"
+                echo "Expected output: [$expected]"
+                return 1
+              fi
