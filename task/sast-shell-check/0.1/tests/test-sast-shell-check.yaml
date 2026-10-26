@@ -53,6 +53,9 @@ spec:
       params:
         - name: image-url
           value: "quay.io/redhat-user-workloads/sast-tests-tenant/tests/tests-sast-shell-check:latest"
+        # SITE_DEFAULT + cluster-config is covered by test-sast-shell-check-kfp-site-default.yaml
+        - name: KFP_GIT_URL
+          value: ""
     - name: check-result
       runAfter:
         - scan-with-shellcheck
