@@ -11,6 +11,8 @@ name: Validate PR - kustomize manifests
     branches: [main]
   merge_group:
     types: [checks_requested]
+permissions:
+  contents: read
 jobs:
   kustomize-build:
     name: Check Kustomize Build of Task
@@ -21,9 +23,14 @@ jobs:
       - name: Install oc
         run: |
           set -euo pipefail
-          url=https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest-4.17/openshift-client-linux.tar.gz
-          if ! which oc; then
-            curl --fail --no-progress-meter -L "$url" | gzip -cd | sudo -- tar -x -C /usr/bin oc
+          OC_CLIENT_VERSION=4.17.57
+          base_url="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_CLIENT_VERSION}"
+          archive=openshift-client-linux.tar.gz
+          OC_CLIENT_CHECKSUM=b4e5b02515dcc1d67aa22d00eaffe8c61efc5afb9e873a3c3301479adc799569
+          if ! command -v oc >/dev/null; then
+            curl -fsSLO "${base_url}/${archive}"
+            echo "${OC_CLIENT_CHECKSUM}  ${archive}" | sha256sum -c -
+            sudo tar -xzf "${archive}" -C /usr/bin oc
           fi
       - name: Validate Manifests
         run: hack/verify-manifests.sh

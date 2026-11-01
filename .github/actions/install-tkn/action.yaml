@@ -11,8 +11,17 @@ runs:
   using: "composite"
   steps:
     - run: |
-        curl -LO "https://github.com/tektoncd/cli/releases/download/v${TKN_CLI_VERSION}/tektoncd-cli-${TKN_CLI_VERSION}_Linux-64bit.deb"
-        sudo dpkg -i ./tektoncd-cli-${TKN_CLI_VERSION}_Linux-64bit.deb
+        DEB="tektoncd-cli-${TKN_CLI_VERSION}_Linux-64bit.deb"
+        BASE_URL="https://github.com/tektoncd/cli/releases/download/v${TKN_CLI_VERSION}"
+
+        curl -fsSL -O "${BASE_URL}/${DEB}"
+
+        # Verify the downloaded .deb against the hardcoded checksum
+        echo "${TKN_CLI_CHECKSUM}  ${DEB}" | sha256sum -c -
+
+        sudo dpkg -i "./${DEB}"
+        rm -f "${DEB}"
       shell: bash
       env:
         TKN_CLI_VERSION: 0.38.1
+        TKN_CLI_CHECKSUM: 1892c6f3515f31ab969e1743d4cbb7d4124c0269caae716bf9e6679d7b3af55e

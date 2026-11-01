@@ -16,6 +16,9 @@ name: Run Task Tests
   merge_group:
     types: [checks_requested]
 
+permissions:
+  contents: read
+
 jobs:
   run-task-tests:
     runs-on: ubuntu-24.04
@@ -30,9 +33,8 @@ jobs:
         id: changed-task-dirs
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
-          files: |
-            # Any task yaml or script (including its tests) is changed
-            task/**/*.{yaml,sh}
+          files: task/**
+          files_ignore: task/**/*.md
           dir_names: "true"
           path: self
 
@@ -42,20 +44,36 @@ jobs:
         env:
           CHANGED_DIRS: ${{ steps.changed-task-dirs.outputs.all_changed_files }}
         run: |
-          echo "Task Dirs changed in PR: ${CHANGED_DIRS}"
-          # Check if tests dir exists under each task dir
+          echo "INFO: changed directories: ${CHANGED_DIRS}"
+          mapfile -t TASK_ROOTS < <(printf '%s\n' ${CHANGED_DIRS} | cut -d/ -f1-2 | sort -u)
+          echo "INFO: task roots: ${TASK_ROOTS[*]}"
+
           TASKS_TO_BE_TESTED=()
-          for TASK_DIR in ${CHANGED_DIRS}; do
-            TESTS_DIR=self/${TASK_DIR}/tests
-            if [ ! -d $TESTS_DIR ]; then
-              echo "INFO: tests dir does not exist: $TESTS_DIR"
+          for TASK_ROOT in "${TASK_ROOTS[@]}"; do
+            if [ ! -d "self/${TASK_ROOT}" ]; then
+              echo "INFO: ${TASK_ROOT}: deleted by this PR, skipping"
               continue
-            else
-              echo "INFO: tests dir exists for task: $TASK_DIR"
-              TASKS_TO_BE_TESTED+=("$TASK_DIR")
+            fi
+
+            # Find all tests dirs under the task directory.
+            FOUND=0
+            while read -r TESTS_DIR; do
+              FOUND=1
+              TESTED_DIR=$(dirname "${TESTS_DIR#self/}")
+              echo "INFO: ${TASK_ROOT}: found tests in ${TESTED_DIR}/tests"
+              TASKS_TO_BE_TESTED+=("$TESTED_DIR")
+            done < <(find "self/${TASK_ROOT}" -type d -name tests | sort)
+
+            if [ "$FOUND" -eq 0 ]; then
+              echo "INFO: ${TASK_ROOT}: no tests directory, nothing to run"
             fi
           done
-          echo "Tasks with tests: ${TASKS_TO_BE_TESTED[*]}"
+
+          if [ "${#TASKS_TO_BE_TESTED[@]}" -eq 0 ]; then
+            echo "INFO: no tests found, the integration test steps will be skipped"
+          else
+            echo "INFO: tasks to be tested (${#TASKS_TO_BE_TESTED[@]}): ${TASKS_TO_BE_TESTED[*]}"
+          fi
           echo "tasklist=${TASKS_TO_BE_TESTED[*]}" >> $GITHUB_OUTPUT
 
       - name: Install tkn
@@ -68,11 +86,11 @@ jobs:
         with:
           repository: 'konflux-ci/konflux-ci'
           path: konflux-ci
-          ref: d510887fc3f38a8f8f4f4d5540f5b7199d4c7f67
+          ref: 4bb4c293c9675941c1e4f1da0d62ab57f4a377f3
 
       - name: Create k8s Kind Cluster
         if: steps.changed-task-dirs.outputs.any_changed == 'true'
-        uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         with:
           config: konflux-ci/kind-config.yaml
 
@@ -96,9 +114,11 @@ jobs:
 
       - name: Validate Tekton Tasks Syntax
         if: steps.changed-task-dirs.outputs.any_changed == 'true'
+        env:
+          CHANGED_DIRS: ${{ steps.changed-task-dirs.outputs.all_changed_files }}
         run: |
           cd self
-          ./.github/scripts/check_tekton_tasks.sh ${{ steps.changed-task-dirs.outputs.all_changed_files }}
+          ./.github/scripts/check_tekton_tasks.sh ${CHANGED_DIRS}
 
       - name: Deploying Konflux
         if: steps.tasks-to-be-tested.outputs.tasklist != ''
