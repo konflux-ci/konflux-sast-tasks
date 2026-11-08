@@ -11,6 +11,8 @@ name: Checkton
     branches: [main]
   merge_group:
     types: [checks_requested]
+permissions:
+  contents: read
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -29,7 +31,6 @@ jobs:
           # Set to false when re-enabling SARIF uploads
           fail-on-findings: true
           find-copies-harder: true
-          exclude-regex: ^task-generator
 
           # Currently, code scanning alerts annoyingly stay open even if you fix them.
           # Don't upload SARIF until https://github.com/orgs/community/discussions/132787 is resolved.
