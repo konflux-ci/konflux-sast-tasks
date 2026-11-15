@@ -1,0 +1,9 @@
+diff a/.github/workflows/run-task-tests.yaml b/.github/workflows/run-task-tests.yaml	(rejected hunks)
+@@ -131,6 +151,6 @@ jobs:
+         env:
+           TASK_LIST: ${{ steps.tasks-to-be-tested.outputs.tasklist }}
+         run: |
+-          echo "Tasks to be tested: ${TASK_LIST}"
++          echo "INFO: tasks to be tested: ${TASK_LIST}"
+           cd $GITHUB_WORKSPACE/self
+           ./.github/scripts/test_tekton_tasks.sh ${TASK_LIST}

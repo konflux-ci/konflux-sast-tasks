@@ -118,6 +118,45 @@ task                                    👈 all tasks go here
 Checkton is used to lint shell scripts embedded in YAML files (primarily Tekton files).
 It does so by running ShellCheck. For more details, see the [checkton project](https://github.com/chmeliik/checkton)
 
+### Compute resources
+
+- script: [`hack/check-compute-resources.py`](hack/check-compute-resources.py)
+  - Checks that Task steps and sidecars set compute resources (`computeResources` on Tekton `v1`, `resources` on `v1beta1`).
+- workflow: [`.github/workflows/check-compute-resources.yaml`](.github/workflows/check-compute-resources.yaml)
+  - Runs the check on pull requests and merge groups.
+
+Run with `uv run hack/check-compute-resources.py`.
+
+The script enforces the following rules for every step and sidecar in each Task:
+
+- The correct resource field must be present, such as `computeResources` for `tekton.dev/v1`, `resources` for `tekton.dev/v1beta1`.
+- A `memory` request and a `memory` limit both must be set and equal.
+- A `cpu` request must be set. If a `cpu` limit is also set, it must equal the request.
+- For steps, resources defined in `stepTemplate` are merged with step-level resources (step values take precedence).
+
+#### Exceptions file
+
+To exclude certain steps or sidecars from the check, include them in an exceptions file.
+The script searches the following paths (in this order, uses the first one found):
+
+- `.github/.compute-resources-exceptions.yaml`
+- `.compute-resources-exceptions.yaml`
+
+The file format is:
+
+```yaml
+exceptions:
+  - path: task/my-task/my-task.yaml
+    steps:
+      - step-name-to-skip
+    sidecars:
+      - sidecar-name-to-skip
+```
+
+Each entry must specify a task `path` and at least one of `steps` or `sidecars`.
+The script reports stale exceptions — entries that reference steps, sidecars, or task files that no longer exist or are now compliant.
+
+
 ### Task migration
 
 - script: [`hack/create-task-migration.sh`](hack/create-task-migration.sh)
@@ -323,7 +362,7 @@ in Pipelines that make use of Trusted Artifacts.
 To author a Trusted Artifacts variant of a Task, create the `${task_name}-oci-ta`
 directory, define a [`recipe.yaml`][recipe.yaml] inside the directory and generate
 the TA variant using the [`hack/generate-ta-tasks.sh`](hack/generate-ta-tasks.sh)
-script. See the [trusted-artifacts generator] README for more details.
+script. See the [ta-generator] README for more details.
 
 The generate script also copies the migration for the **current task version**
 (`migrations/<version>.sh`, matching the `app.kubernetes.io/version` label) from
@@ -612,10 +651,9 @@ hack/versioning.py new-changelog task/
 [onboarding process]: https://github.com/konflux-ci/task-repo-shared-ci?tab=readme-ov-file#-onboarding
 [cruft]: https://cruft.github.io/cruft
 [uv]: https://docs.astral.sh/uv/
-[recipe.yaml]: https://github.com/konflux-ci/build-definitions/tree/main/task-generator/trusted-artifacts#configuration-in-recipeyaml
-[trusted-artifacts generator]: https://github.com/konflux-ci/build-definitions/tree/main/task-generator/trusted-artifacts
+[recipe.yaml]: https://github.com/konflux-ci/task-repo-shared-ci/tree/main/ta-generator#configuration-in-recipeyaml
+[ta-generator]: https://github.com/konflux-ci/task-repo-shared-ci/tree/main/ta-generator
 [GITHUB_TOKEN]: https://docs.github.com/en/actions/concepts/security/github_token
-[tekton-catalog-structure]: https://github.com/tektoncd/catalog?tab=readme-ov-file#catalog-structure
 [Renovate]: https://docs.renovatebot.com/
 [renovate-ignorepaths]: https://docs.renovatebot.com/configuration-options/#ignorepaths
 [ADR 54: CHANGELOG.md format]: https://github.com/konflux-ci/architecture/blob/main/ADR/0054-task-versioning.md#changelogmd-format
