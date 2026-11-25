@@ -6,8 +6,8 @@ ShellCheck is a static analysis tool, gives warnings and suggestions for bash/sh
 ## Parameters
 |name|description|default value|required|
 |---|---|---|---|
-|EXTRA_ARTIFACT_FILTER|Extended regex matching org.opencontainers.image.title paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.|(^|/)[^/]+\.(sh|bash|zsh|ksh)$|false|
-|FETCH_EXTRA_ARTIFACTS|When "true", fetch script-like files from image-url@image-digest (OCI artifact manifest) into /var/workdir/source alongside the restored SOURCE_ARTIFACT. Skipped for standard container images.|false|false|
+|EXTRA_ARTIFACT_FILTER|Extended regex matching org.opencontainers.image.title paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.|[.][a-z]*sh$|false|
+|FETCH_EXTRA_ARTIFACTS|When "true", fetch files matching EXTRA_ARTIFACT_FILTER from image-url@image-digest (OCI artifact manifest) into /var/workdir/source alongside the restored SOURCE_ARTIFACT. Skipped for standard container images.|false|false|
 |IMP_FINDINGS_ONLY|Whether to include important findings only|true|false|
 |KFP_GIT_URL|Known False Positives (KFP) git URL (optionally taking a revision delimited by \#). Defaults to "SITE_DEFAULT", which means the default value "https://gitlab.cee.redhat.com/osh/known-false-positives.git" for internal Konflux instance and empty string for external Konflux instance. If set to an empty string, the KFP filtering is disabled.|SITE_DEFAULT|false|
 |PROJECT_NAME|Name of the scanned project, used to find path exclusions. By default, the Konflux component name will be used.|""|false|
