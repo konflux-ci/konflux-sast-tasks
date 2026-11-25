@@ -3,8 +3,9 @@
   value: sast-unicode-check-oci-ta-min
 # kustomize build task/sast-unicode-check-oci-ta/0.4 | yq '.spec.steps.[].name' | nl -v 0 
 #     0	use-trusted-artifact
-#     1	sast-unicode-check
-#     2	upload
+#     1	fetch-extra-artifacts
+#     2	sast-unicode-check
+#     3	upload
 
 # use-trusted-artifact step — keep minimal (not the production 4Gi TA standard)
 - op: test
@@ -22,10 +23,10 @@
 # sast-unicode-check step — reduced for minimal/demo pipelines;
 # parent oci-ta has no limits.cpu (policy); only shrink memory + cpu request
 - op: test
-  path: /spec/steps/1/name
+  path: /spec/steps/2/name
   value: sast-unicode-check
 - op: replace
-  path: /spec/steps/1/computeResources
+  path: /spec/steps/2/computeResources
   value:
     limits:
       memory: 256Mi
