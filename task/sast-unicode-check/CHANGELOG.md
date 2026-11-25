@@ -11,6 +11,12 @@ If that's not something you ever plan to do, consider removing this section.
 
 *Nothing yet.*
 
+## 0.4.2
+
+### Changed
+
+- Version bump to release the Trusted Artifacts variants.
+
 ## 0.4.1
 
 ### Changed

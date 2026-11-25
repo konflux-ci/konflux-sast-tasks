@@ -57,7 +57,7 @@ fi
         (
             "|" + .name +
             "|" + (.description // "" | sub("\n", " ")) +
-            "|" + (.default // (.default != "*" | "")) +
+            "|" + (.default // (.default != "*" | "") | sub("[|]", "&#124;")) +
             "|" + (.default != "*") + "|"
         )' "$TASK_PATH"
     )
