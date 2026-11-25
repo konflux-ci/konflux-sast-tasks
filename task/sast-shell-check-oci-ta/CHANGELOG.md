@@ -15,7 +15,7 @@ If that's not something you ever plan to do, consider removing this section.
 
 ### Added
 
-- Added opt-in scanning of files fetched from OCI artifacts.
+- Added opt-in scanning of files fetched from raw OCI artifacts and matching titled ModelCar image layers.
 
 ## 0.1.1
 
