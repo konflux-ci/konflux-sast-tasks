@@ -92,5 +92,10 @@ spec:
               jq -e '.version != null and (.runs | length) > 0' "$report"
               jq -e 'select(.inlineExternalProperties[0].externalizedProperties["analyzer-version-snyk-code"] != null)' "$report"
 
+              echo -n "Checking Snyk file coverage: "
+              jq -e '.inlineExternalProperties[0].externalizedProperties
+                | .["snyk-scanned-files-success"] > 0
+                  and .["snyk-scanned-files-total"] >= .["snyk-scanned-files-success"]' "$report"
+
               echo -n "Checking path prefix in findings: "
               jq -e '.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri | startswith("test-project/")' "$report"

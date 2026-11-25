@@ -437,6 +437,8 @@ spec:
 
         # Generate full paths for each directory in TARGET_DIRS
         IFS="," read -ra TARGETS_ARRAY <<<"$TARGET_DIRS"
+        total_files=0
+        supported_files=0
         for d in "${TARGETS_ARRAY[@]}"; do
           potential_path="${SOURCE_CODE_DIR}/${d}"
           resolved_path=$(realpath -m "$potential_path")
@@ -459,6 +461,15 @@ spec:
           RETRY_INTERVAL=30 retry _snyk_code_test $ARGS "$resolved_path" --max-depth=1 --sarif-file-output="${resolved_path}/sast_snyk_check_out_${d//\//_}.json"
 
           sarif_out="${resolved_path}/sast_snyk_check_out_${d//\//_}.json"
+          # csgrep rewrites SARIF without Snyk's coverage properties.
+          if [[ -s "$sarif_out" ]] && coverage_counts=$(jq -r '
+            [.runs[]?.properties.coverage[]?] |
+            [(map(.files) | add // 0), (map(select(.type == "SUPPORTED").files) | add // 0)] | @tsv
+          ' "$sarif_out"); then
+            read -r target_total target_supported <<<"$coverage_counts"
+            total_files=$((total_files + target_total))
+            supported_files=$((supported_files + target_supported))
+          fi
           if [[ "$d" != "." && -f "$sarif_out" ]]; then
             prefix="${d%/}/"
             echo "INFO: Prepending path prefix '${prefix}' to ${sarif_out}"
@@ -552,20 +563,6 @@ spec:
             echo "INFO: Results after filtering:"
             (set -x && csgrep --mode=evtstat filtered_sast_snyk_check_out.json)
             csgrep filtered_sast_snyk_check_out.json
-          fi
-
-          # Generation of scan stats
-
-          total_files=$(jq '[(.runs[0].properties.coverage // [])[].files] | add' "${SOURCE_CODE_DIR}"/sast_snyk_check_out.json)
-          supported_files=$(jq '[(.runs[0].properties.coverage // [])[] | select(.type == "SUPPORTED") | .files] | add' "${SOURCE_CODE_DIR}"/sast_snyk_check_out.json)
-
-          # We make sure the values are 0 if no supported/total files are found
-          if [ "$total_files" = "null" ] || [ -z "$total_files" ]; then
-            total_files=0
-          fi
-
-          if [ "$supported_files" = "null" ] || [ -z "$supported_files" ]; then
-            supported_files=0
           fi
 
           coverage_ratio=0
