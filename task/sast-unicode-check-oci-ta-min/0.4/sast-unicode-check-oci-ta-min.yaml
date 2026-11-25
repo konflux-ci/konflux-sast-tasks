@@ -12,7 +12,7 @@ spec:
   description: Scans source code for non-printable unicode characters in all text
     files.
   params:
-  - default: .*
+  - default: (^|/)(Dockerfile|Containerfile|[^/]+[.](json|yaml|yml|toml|jinja|jinja2|sh|bash|zsh|ksh|py))$
     description: Extended regex matching org.opencontainers.image.title paths in the
       OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
     name: EXTRA_ARTIFACT_FILTER

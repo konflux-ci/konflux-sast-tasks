@@ -18,7 +18,7 @@ addParams:
   - name: EXTRA_ARTIFACT_FILTER
     type: string
     description: Extended regex matching org.opencontainers.image.title paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
-    default: .*
+    default: '(^|/)(Dockerfile|Containerfile|[^/]+[.](json|yaml|yml|toml|jinja|jinja2|sh|bash|zsh|ksh|py))$'
 additionalSteps:
   - at: 1
     name: fetch-extra-artifacts

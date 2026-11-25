@@ -16,7 +16,7 @@ spec:
       description: Extended regex matching org.opencontainers.image.title
         paths in the OCI manifest when FETCH_EXTRA_ARTIFACTS=true.
       type: string
-      default: .*
+      default: (^|/)(Dockerfile|Containerfile|[^/]+[.](json|yaml|yml|toml|jinja|jinja2|sh|bash|zsh|ksh|py))$
     - name: FETCH_EXTRA_ARTIFACTS
       description: When "true", fetch files matching EXTRA_ARTIFACT_FILTER
         from image-url@image-digest (OCI artifact manifest) into /var/workdir/source

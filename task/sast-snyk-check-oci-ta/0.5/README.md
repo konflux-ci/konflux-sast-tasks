@@ -12,7 +12,7 @@ See https://snyk.io/product/snyk-code/ and https://snyk.io/ for more information
 |name|description|default value|required|
 |---|---|---|---|
 |ARGS|Append arguments.|""|false|
-|EXTRA_ARTIFACT_FILTER|Extended regex matched against org.opencontainers.image.title (and olot.layer.content.inlayerpath when present) when FETCH_EXTRA_ARTIFACTS=true.|(^|/)(Dockerfile|Containerfile|[^/]+\.(sh|bash|zsh|ksh|py|rb|pl|js|mjs|cjs|ts|ps1))$|false|
+|EXTRA_ARTIFACT_FILTER|Extended regex matched against org.opencontainers.image.title (and olot.layer.content.inlayerpath when present) when FETCH_EXTRA_ARTIFACTS=true.|(^&#124;/)(Dockerfile&#124;Containerfile&#124;[^/]+\.(sh&#124;bash&#124;zsh&#124;ksh&#124;py&#124;rb&#124;pl&#124;js&#124;mjs&#124;cjs&#124;ts&#124;ps1))$|false|
 |FETCH_EXTRA_ARTIFACTS|When "true", fetch files matching EXTRA_ARTIFACT_FILTER from image-url@image-digest into /var/workdir/source alongside the restored SOURCE_ARTIFACT. Supports OCI artifacts (raw titled blobs) and container images with titled layers (e.g. ModelCar/olot), extracting matching tar layers without unpacking the full image.|false|false|
 |IGNORE_FILE_PATHS|Directories or files to be excluded from Snyk scan (Comma-separated). Useful to split the directories of a git repo across multiple components.|""|false|
 |IMP_FINDINGS_ONLY|Report only important findings in task result. Default is "true". To report all findings in task result, specify "false". Uploaded SARIF report to remote registry always includes all findings, regardless of severity level.|true|false|
