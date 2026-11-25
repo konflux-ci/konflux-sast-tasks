@@ -3,8 +3,9 @@
   value: sast-shell-check-oci-ta-min
 # kustomize build task/sast-shell-check-oci-ta/0.1 | yq '.spec.steps.[].name' | nl -v 0 
 #     0	use-trusted-artifact
-#     1	sast-shell-check
-#     2	upload
+#     1	fetch-extra-artifacts
+#     2	sast-shell-check
+#     3	upload
 
 # use-trusted-artifact step — keep minimal (not the production 4Gi TA standard)
 - op: test
@@ -22,10 +23,10 @@
 # sast-shell-check step — reduced for minimal/demo pipelines (PR #93);
 # parent oci-ta has no limits.cpu (policy); only shrink memory + cpu request
 - op: test
-  path: /spec/steps/1/name
+  path: /spec/steps/2/name
   value: sast-shell-check
 - op: replace
-  path: /spec/steps/1/computeResources
+  path: /spec/steps/2/computeResources
   value:
     limits:
       memory: 256Mi
